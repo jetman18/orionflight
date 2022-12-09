@@ -62,8 +62,8 @@ all: main-build
 main-build: mario.elf secondary-outputs
 
 # Tool invocations
-mario.elf mario.map: $(OBJS) $(USER_OBJS) C:\Users\sudo\Desktop\mario_uav\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "mario.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\sudo\Desktop\mario_uav\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="mario.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+mario.elf mario.map: $(OBJS) $(USER_OBJS) C:\Users\sudo\Documents\GitHub\orionflight\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "mario.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\sudo\Documents\GitHub\orionflight\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="mario.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
