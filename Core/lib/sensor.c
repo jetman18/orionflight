@@ -27,7 +27,7 @@ float anglesComputed = 0.0f;
 float invSampleFreq = 1.0f / DEFAULT_SAMPLE_FREQ;
 
 /*  configution mpu6500  */
-
+////////
 
 static float acc_pitch_offset,acc_roll_offset;
 
