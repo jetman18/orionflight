@@ -1,0 +1,4 @@
+../Core/lib/debug.c:19:12:intToStr	24	static
+../Core/lib/debug.c:37:6:print_float	48	static
+../Core/lib/debug.c:75:6:print_char	0	static
+../Core/lib/debug.c:88:6:print_int	40	static

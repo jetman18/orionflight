@@ -1,0 +1,4 @@
+C:/Users/sudo/Documents/stm_workspace/m/Core/lib/timeclock.h:23:6:loopFequency	48	static
+C:/Users/sudo/Documents/stm_workspace/m/Core/lib/timeclock.h:31:6:delay_us	48	static
+C:/Users/sudo/Documents/stm_workspace/m/Core/lib/timeclock.h:39:6:delay_ms	40	static
+../Core/flymode/quadrotor/mainloop.c:10:6:main_loop	8	static

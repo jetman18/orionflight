@@ -1,0 +1,14 @@
+../Core/lib/sensor.c:219:14:invSqrt_	16	static
+../Core/lib/sensor.c:48:13:MPU_get_acc	32	static
+../Core/lib/sensor.c:37:13:MPU_get_gyro	32	static
+../Core/lib/lpf.h:17:7:pt1FilterApply	24	static
+../Core/lib/lpf.h:26:7:pt2FilterGain	8	static
+../Core/lib/lpf.h:36:7:pt2FilterApply	24	static
+../Core/lib/sensor.c:102:6:MPU_init	56	static
+../Core/lib/sensor.c:119:6:MPU_update	40	static
+../Core/lib/sensor.c:164:6:qmc5883_init	32	static
+../Core/lib/sensor.c:173:6:qmc_get_values	56	static
+../Core/lib/sensor.c:190:6:magnet_sensor_calibrate	56	static
+../Core/lib/sensor.c:231:6:computeAnglesFromQuaternion	40	static
+../Core/lib/sensor.c:238:6:updateIMU	56	static
+../Core/lib/sensor.c:313:6:update	104	static
