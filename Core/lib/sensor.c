@@ -4,8 +4,9 @@
 #include "i2c.h"
 #include "math.h"
 #include "lpf.h"
-
-#define I2C_PORT &hi2c2
+#include "../flymode/quadrotor/config.h"
+#include "spi.h"
+/*hel*/
 #define LSB_gyr  65.5f
 #define kalman_gain 0.001f
 #define DEFAULT_SAMPLE_FREQ	333.33f	// sample frequency in Hz
@@ -34,20 +35,42 @@ static float acc_pitch_offset,acc_roll_offset;
 static int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
 static int16_t acc_offs_x, acc_offs_y, acc_offs_z;
 
-static void MPU_get_gyro(IMU_raw_t *T){
-	  uint8_t buffe[6];	
 
-	  buffe[0] = 0x43;// gyro address
+/**
+ *  get gyro raw value
+ */
+void MPU_get_gyro(IMU_raw_t *k){
+#ifdef MPU_VIA_I2C
+	  uint8_t buffe[6];
+	  buffe[0]= 0x43;// gyro address
 	  HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffe,1,1);
 	  HAL_I2C_Master_Receive(I2C_PORT,0x68<<1,buffe,6,1);
 
-	  T->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
-	  T->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
-	  T->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
-	}
-static void MPU_get_acc(IMU_raw_t *k){
+	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+#ifdef MPU_VIA_SPI
 	  uint8_t buffe[6];
-		
+	  buffe[0]= 0x43;// gyro address
+	  buffe[0] |=0x80;
+	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(SPI_PORT,&buffe[0],1,100);
+	  HAL_SPI_Receive(SPI_PORT,buffe,6,100);
+	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_SET);
+
+	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+	}
+
+/**
+ *  get acc raw value
+ */
+void MPU_get_acc(IMU_raw_t *k){
+#ifdef MPU_VIA_I2C
+	uint8_t buffe[6];
 	  buffe[0] = 0x3b;// acc address
 	  HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffe,1,1);
 	  HAL_I2C_Master_Receive(I2C_PORT,0x68<<1,buffe,6,1);
@@ -55,6 +78,21 @@ static void MPU_get_acc(IMU_raw_t *k){
 	  k->accx=(int16_t)(buffe[0]<<8)|buffe[1];
 	  k->accy=(int16_t)(buffe[2]<<8)|buffe[3];
 	  k->accz=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+#ifdef MPU_VIA_SPI
+	  uint8_t buffe[6];
+	  buffe[0] = 0x3b;// acc address
+	  buffe[0] |=0x80;
+	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(SPI_PORT,buffe,1,100);
+	  HAL_SPI_Receive(SPI_PORT,buffe,6,100);
+	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_SET);
+
+	  k->accx=(int16_t)buffe[0]<<8|buffe[1];
+	  k->accy=(int16_t)buffe[2]<<8|buffe[3];
+	  k->accz=(int16_t)buffe[4]<<8|buffe[5];
+#endif
+
 }
 
 static void get_offset(){
@@ -99,8 +137,13 @@ static void get_offset(){
 	  acc_pitch_offset /=(float)k1;
 	  acc_roll_offset  /=(float)k1;
 }
+
+
+
 void MPU_init(){  
+#ifdef MPU_VIA_I2C
     uint8_t buffer[6];
+
     buffer[0] = 0x6B;
 	buffer[1] = 0x00;
 	HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffer,2,1);
@@ -112,7 +155,30 @@ void MPU_init(){
 	buffer[0] = 0x1C;
 	buffer[1] = 0x18;
 	HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffer,2,1);
-	
+#endif
+#ifdef MPU_VIA_SPI
+    uint8_t data[2];
+
+	data[0]=0x6b;
+	data[1]=0x00;
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&hspi1,data,2,100);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
+
+	data[0]=0x1b;
+	data[1]=0x08;
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&hspi1,data,2,100);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
+
+	data[0]=0x1c;
+	data[1]=0x10;
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&hspi1,data,2,100);
+	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
+
+
+#endif
 	get_offset();
 	// Finish setup MPU-6050 register
 }
@@ -177,9 +243,9 @@ void qmc_get_values(MAG_t *t,float pitch,float roll){
 	  HAL_I2C_Mem_Read(I2C_PORT, 0x1A, 0x06, 1,&datas, 1, 1);
 	  if((datas && 0x01)==0x01){
 			HAL_I2C_Mem_Read(I2C_PORT,QMC_ADDR,0x00,1,buf,6,1);
-			t->mx=(int16_t)(buf[1])<<8|(int16_t)buf[0];
-			t->my=(int16_t)(buf[3])<<8|(int16_t)buf[2];
-			t->mz=(int16_t)(buf[5])<<8|(int16_t)buf[4];
+			t->mx=(int16_t)buf[1]<<8|(int16_t)buf[0];
+			t->my=(int16_t)buf[3]<<8|(int16_t)buf[2];
+			t->mz=(int16_t)buf[5]<<8|(int16_t)buf[4];
             mx = t->mx*cos_approx(-pitch) + t->my*sin_approx(-pitch)*sin_approx(roll) + t->mz*sin_approx(-pitch)*cos_approx(-roll);
 	        my = t->my*(cos_approx(-roll) - t->mz*sin_approx(-roll));
 

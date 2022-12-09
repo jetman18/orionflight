@@ -44,6 +44,8 @@ typedef struct{
 }IMU_t;
 
 void MPU_init();
+void mpu_get_acc(IMU_raw_t*);
+void mpu_get_gyro(IMU_raw_t*);
 void MPU_update(euler_angle_t *m,int delta_t);
 void updateIMU(float gx, float gy, float gz, float ax, float ay, float az);
 void computeAnglesFromQuaternion(euler_angle_t *m);
