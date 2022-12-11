@@ -179,7 +179,7 @@ void MPU_init(){
 
 
 #endif
-	get_offset();
+	//get_offset();
 	// Finish setup MPU-6050 register
 }
 void MPU_update(euler_angle_t *m,int delta_t){

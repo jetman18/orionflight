@@ -7,7 +7,7 @@
 #include "gpio.h"
 #include "timeclock.h"
 
-uint8_t k;
+uint8_t k,l;
 MAG_t t;
 IMU_raw_t data;
 void main_loop(){
@@ -25,11 +25,12 @@ void main_loop(){
                k=i;
                break;
 	        }
+	        l=i;
 	    }
 while(1){
 
     MPU_get_acc(&data);
-    MPU_get_gyro(&data);
+ //   MPU_get_gyro(&data);
     qmc_get_values(&t,0,0);
 	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     loopFequency(100);
