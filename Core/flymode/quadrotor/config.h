@@ -22,14 +22,14 @@ extern "C" {
 
 
 /* mpu configuration*/
-//#define MPU_VIA_SPI
-//#define SPI_PORT    &hspi1
-//#define GPIO_CS_PIN   GPIO_PIN_4
-//#define GPIO_PORT     GPIOA
+#define MPU_VIA_SPI
+#define SPI_PORT    &hspi1
+#define GPIO_CS_PIN   GPIO_PIN_4
+#define GPIO_PORT     GPIOA
 
 
 /* mpu configuration */
-#define MPU_VIA_I2C
+//#define MPU_VIA_I2C
 
 /* magneto sensor*/
 #define I2C_PORT &hi2c2

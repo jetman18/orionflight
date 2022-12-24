@@ -20,11 +20,11 @@ static uint64_t time1,time2;
 /*
  * tao vong lap voi chu ki hz
  */
-void loopFequency(uint16_t hz)
+void looptime(uint16_t hz)
 {
     do{
    	 time2=micros();
-     }while((time2-time1)<HZ_TO_MICRO(hz));
+     }while((time2-time1)<hz);
     time1=time2;
 }
 

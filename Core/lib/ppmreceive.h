@@ -19,7 +19,7 @@ typedef struct t{
 /*brief rc channel reveive
  *Param  chh rcChannel
  */
-static void callBackFuncition(rcChannel_t chh){
+void callBackFuncition(rcChannel_t *chh){
 	static uint8_t start = 0;
 	static uint8_t count = 0;
 	static uint32_t timeVal,currentTime,prerviTime;
@@ -37,7 +37,7 @@ static void callBackFuncition(rcChannel_t chh){
 
 	if(start && !GET_PIN_STATE){
 		currentTime=micros();
-		if(count>0)chh.ch[count-1]=currentTime-prerviTime;
+		if(count>0)chh->ch[count-1]=currentTime-prerviTime;
 		prerviTime=currentTime;
 		count++;
 		if(count > (NUM_OF_CHANNEL + 1) ){

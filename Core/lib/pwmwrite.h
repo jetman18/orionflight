@@ -1,21 +1,15 @@
-/*
- * pwmwirite.h
- *
- *  Created on: 11 thg 12, 2022
- *      Author: sudo
- */
 
-#ifndef _PWMWRITE_H_
-#define _PWMWRITE_H_
+#ifndef PWMWRITE_H
+#define PWMWRITE_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include "stdio.h"
+#include "gpio.h"
 
-
-
-
+void writePWM(uint16_t* m);
 
 #ifdef __cplusplus
 }

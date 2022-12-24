@@ -6,38 +6,49 @@
 #include "usart.h"
 #include "gpio.h"
 #include "timeclock.h"
+#include "pwmwrite.h"
+#include "ppmreceive.h"
 
-uint8_t k,l;
+
+uint16_t moto[6];
+euler_angle_t m;
 MAG_t t;
-IMU_raw_t data;
+rcChannel_t rx;
 void main_loop(){
 	// int main
 	HAL_TIM_Base_Start_IT(&htim4);
 	MPU_init();
-	qmc5883_init();
 
-	    for(int i=1; i<128; i++)
-	    {
-	        int ret = HAL_I2C_IsDeviceReady(&hi2c2, (uint16_t)(i<<1), 3, 5);
+	for(int i=0;i<6;i++){
+		rx.ch[i]=1000;
+	}
 
-	        if(ret == HAL_OK)
-	        {
-               k=i;
-               break;
-	        }
-	        l=i;
-	    }
+	//qmc5883_init();
+
 while(1){
 
-    MPU_get_acc(&data);
- //   MPU_get_gyro(&data);
-    qmc_get_values(&t,0,0);
-	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-    loopFequency(100);
+	MPU_update(&m,4000);  //4000 DELTA T
 
+
+
+    //writePWM(moto);
+    looptime(4000);
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+/*-------------ISR HANDLER----------------------*/
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
@@ -45,4 +56,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	{
 		callBack();
 	}
+}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if(GPIO_Pin == GPIO_PIN_14) // If The INT Source Is EXTI 14
+    {
+    	callBackFuncition(&rx);
+    }
+
 }

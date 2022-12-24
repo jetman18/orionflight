@@ -28,7 +28,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h \
  ../Core/Inc/i2c.h ../Core/Inc/main.h ../Core/Inc/spi.h ../Core/Inc/tim.h \
  ../Core/Inc/usart.h ../Core/Inc/gpio.h \
- C:/Users/sudo/Desktop/mario_uav/Core/flymode/quadrotor/mainloop.h
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/flymode/quadrotor/mainloop.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
 ../Core/Inc/stm32f1xx_hal_conf.h:
@@ -63,4 +63,4 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/tim.h:
 ../Core/Inc/usart.h:
 ../Core/Inc/gpio.h:
-C:/Users/sudo/Desktop/mario_uav/Core/flymode/quadrotor/mainloop.h:
+C:/Users/sudo/Documents/GitHub/orionflight/Core/flymode/quadrotor/mainloop.h:

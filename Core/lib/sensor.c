@@ -39,7 +39,7 @@ static int16_t acc_offs_x, acc_offs_y, acc_offs_z;
 /**
  *  get gyro raw value
  */
-void MPU_get_gyro(IMU_raw_t *k){
+void mpu_get_gyro(IMU_raw_t *k){
 #ifdef MPU_VIA_I2C
 	  uint8_t buffe[6];
 	  buffe[0]= 0x43;// gyro address
@@ -68,7 +68,7 @@ void MPU_get_gyro(IMU_raw_t *k){
 /**
  *  get acc raw value
  */
-void MPU_get_acc(IMU_raw_t *k){
+void mpu_get_acc(IMU_raw_t *k){
 #ifdef MPU_VIA_I2C
 	uint8_t buffe[6];
 	  buffe[0] = 0x3b;// acc address
@@ -105,7 +105,7 @@ static void get_offset(){
 	for(uint16_t i=0;i<2000;i++){
 		
         //  acc offset
-		MPU_get_acc(&data);
+		mpu_get_acc(&data);
 		if((data.accx+data.accy+data.accz)!=0)k1+=1;
 
         contan_acc[0] += data.accx;
@@ -119,7 +119,7 @@ static void get_offset(){
 		acc_roll_offset  += roll_acc;
 			
 		// gyro offset		
-		MPU_get_gyro(&data);
+		mpu_get_gyro(&data);
 		if((data.gyrox+data.gyroy+data.gyroz)!=0)k2++;
 	    contan_gyro[0] += data.gyrox;
 	    contan_gyro[1] += data.gyroy;
@@ -179,7 +179,7 @@ void MPU_init(){
 
 
 #endif
-	//get_offset();
+	get_offset();
 	// Finish setup MPU-6050 register
 }
 void MPU_update(euler_angle_t *m,int delta_t){
@@ -188,7 +188,7 @@ void MPU_update(euler_angle_t *m,int delta_t){
 	float lsb2degre =(delta_t*0.000001)/LSB_gyr;
 	// gyro calibrate
 
-	MPU_get_gyro(&p);
+	mpu_get_gyro(&p);
 
     m->pitch += (float)(p.gyrox -gyr_offs_x)*lsb2degre;
     m->roll  += (float)(p.gyroy -gyr_offs_y)*lsb2degre;
@@ -205,16 +205,19 @@ void MPU_update(euler_angle_t *m,int delta_t){
 
 	m->pitch += m->roll   * sin_approx((p.gyroz -gyr_offs_z)*lsb2degre*(float)RAD);
 	m->roll  -= m->pitch  * sin_approx((p.gyroz -gyr_offs_z)*lsb2degre*(float)RAD);
+
     //  acc calibrate
-	MPU_get_acc(&p);
+	mpu_get_acc(&p);
 	Roll_acc   =(-atan2_approx(p.accx,p.accz)*1/RAD - acc_roll_offset);
 	Pitch_acc  = (atan2_approx(p.accy,p.accz)*1/RAD - acc_pitch_offset);
 	
 	m->pitch +=kalman_gain*(Pitch_acc-m->pitch);
 	m->roll  +=kalman_gain*(Roll_acc-m->roll);
 	//m->yaw   +=kalman_gain*(MAG_yaw-m->yaw);
+
+    /*
 	
-    /*acc
+    acc
 	 xx = p.accx-acc_offs_x;
      yy = p.accy- acc_offs_y;
 	 xc = xx*cos_approx(m->roll*RAD) + yy*sin_approx(m->roll*RAD)*sin_approx(m->pitch*RAD) +p.accz*sin_approx(m->roll*RAD)*cos_approx(m->pitch*RAD);
