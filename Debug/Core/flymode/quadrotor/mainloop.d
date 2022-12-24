@@ -31,9 +31,11 @@ Core/flymode/quadrotor/mainloop.o: ../Core/flymode/quadrotor/mainloop.c \
  ../Core/Inc/i2c.h ../Core/Inc/main.h ../Core/Inc/spi.h ../Core/Inc/tim.h \
  ../Core/Inc/usart.h ../Core/Inc/gpio.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h \
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h \
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pwmwrite.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h \
- C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pid.h
 ../Core/flymode/quadrotor/mainloop.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/sensor.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
@@ -70,6 +72,8 @@ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/sensor.h:
 ../Core/Inc/usart.h:
 ../Core/Inc/gpio.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h:
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pwmwrite.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:
-C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h:
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pid.h:

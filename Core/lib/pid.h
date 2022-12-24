@@ -11,13 +11,7 @@ typedef struct{
 	float kd;
 }pid_gain_t;
 
-
-
-
-
-
-
-
+float pidCalcutate(pid_gain_t gain,float fbcontrol,float control);
 
 #ifdef __cplusplus
 }

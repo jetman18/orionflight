@@ -192,7 +192,7 @@ void MPU_update(euler_angle_t *m,int delta_t){
 
     m->pitch += (float)(p.gyrox -gyr_offs_x)*lsb2degre;
     m->roll  += (float)(p.gyroy -gyr_offs_y)*lsb2degre;
-    m->yaw   += (float)(p.gyroz -gyr_offs_z)*lsb2degre;
+    m->yaw   = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
 	
 	if(m->pitch>180.0f)m->pitch  -= 360.0f;
 	else if(m->pitch<-180.0f)m->pitch += 360.0f;

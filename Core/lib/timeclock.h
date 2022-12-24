@@ -16,19 +16,8 @@ extern "C" {
 #define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
 
 static uint64_t micross;
-static uint64_t time1,time2;
-/*
- * tao vong lap voi chu ki hz
- */
-void looptime(uint16_t hz)
-{
-    do{
-   	 time2=micros();
-     }while((time2-time1)<hz);
-    time1=time2;
-}
 
-void delay_us(uint32_t val)
+static inline void delay_us(uint32_t val)
 {
 	static uint32_t time_1;
    	time_1=micros();
@@ -36,7 +25,7 @@ void delay_us(uint32_t val)
 
 }
 
-void delay_ms(uint32_t val)
+static inline void delay_ms(uint32_t val)
 {
 	static uint32_t time_2;
    	time_2=millis();
