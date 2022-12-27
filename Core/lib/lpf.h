@@ -17,8 +17,8 @@ static inline float pt1FilterGain(float f_cut, float dT){
 static inline float pt1FilterApply( float input,float f_cut,float dT)
 {
 	static float kk;
-	float RC = 1 / (2 * M_PIf * f_cut);
-    float gain_k =dT / (RC + dT);
+	float RC = 1.0f / (2 *M_PIf * f_cut);
+    float gain_k =(float)dT / (RC + dT);
     kk = kk + gain_k*(input - kk);
     return kk;
 }

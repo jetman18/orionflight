@@ -3,22 +3,20 @@
 #include "gpio.h"
 #include "tim.h"
 #include "spi.h"
+#define LEN 15
 
-
-uint8_t ck[2];
-
-static void checksum(uint8_t *l,int len){
+void checksum(uint8_t *l,int len){
 	uint16_t sum=0;
-    for(int i=1;i<len+1;i++){
+    for(int i=1;i<len-2;i++){
     	sum += l[i];
     }
-    ck[0] = (uint8_t)sum & 0xff;
-    ck[1] = (uint8_t)sum>>8;
-
+    l[len-1] = (uint8_t)sum & 0xff;
+    l[len-2] = (uint8_t)sum>>8;
 }
 void writePWM(uint16_t* m){//6 channel
-		uint8_t buf[15];
-        buf[0] = 0x5b;
+
+	uint8_t buf[LEN];
+    buf[0] = 0x5b;
 
 		int l=1;
 		for(int i=0;i<6;i++){
@@ -26,13 +24,14 @@ void writePWM(uint16_t* m){//6 channel
 			buf[l+1]=m[i]>>8;
 			l+=2;
 		}
-	 checksum(buf,12);
-	 buf[13]=ck[1];
-	 buf[14]=ck[0];
+	 checksum(buf,LEN);
 
-	 HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_RESET);
-	 HAL_SPI_Transmit(&hspi1,buf,15,1);
-	 HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_SET);
+	 HAL_GPIO_WritePin(GPIOB,GPIO_PIN_12,GPIO_PIN_RESET);
+	 HAL_SPI_Transmit(&hspi2,buf,LEN,10);
+	 HAL_GPIO_WritePin(GPIOB,GPIO_PIN_12,GPIO_PIN_SET);
+
+
+	 //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 	}
 

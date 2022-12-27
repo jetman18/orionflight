@@ -10,15 +10,17 @@ extern "C" {
 #include "gpio.h"
 
 #define GET_PIN_STATE (HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_14))
-#define TIME_MARK_START 10000  //m
-#define NUM_OF_CHANNEL 6
+#define TIME_MARK_START 7000  //m
+#define NUM_OF_CHANNEL 8
 typedef struct t{
-	uint16_t ch[6];
+	uint16_t ch[8];
 }rcChannel_t;
 
 /*brief rc channel reveive
  *Param  chh rcChannel
  */
+
+
 void callBackFuncition(rcChannel_t *chh){
 	static uint8_t start = 0;
 	static uint8_t count = 0;

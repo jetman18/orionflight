@@ -1,6 +1,6 @@
-C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:28:6:looptime	48	static
-C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:38:5:isxxHZ	24	static
-C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:22:6:callBackFuncition	16	static
-../Core/flymode/quadrotor/mainloop.c:23:6:main_loop	24	static
-../Core/flymode/quadrotor/mainloop.c:92:6:HAL_TIM_PeriodElapsedCallback	24	static
-../Core/flymode/quadrotor/mainloop.c:99:6:HAL_GPIO_EXTI_Callback	16	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:29:6:looptime	48	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:39:5:fequency_division	16	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:24:6:callBackFuncition	16	static
+../Core/flymode/quadrotor/mainloop.c:22:6:main_loop	16	static
+../Core/flymode/quadrotor/mainloop.c:75:6:HAL_TIM_PeriodElapsedCallback	24	static
+../Core/flymode/quadrotor/mainloop.c:83:6:HAL_GPIO_EXTI_Callback	16	static

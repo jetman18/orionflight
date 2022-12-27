@@ -20,27 +20,25 @@ extern "C" {
 /*
  * tao vong lap voi chu ki hz
  */
-#define feqRun(hz) if(isxxHZ(hz))
-
-static uint16_t count=0;
-static uint16_t feq=0;
+#define FEQUENCY_DIV(div) if(fequency_division(div))
+uint16_t cou=0;
+uint16_t count=1;
+uint16_t feq=0;
 uint64_t time1,time2;
+float dT;
 void looptime(uint16_t us)
 {
 	feq = 1/(us*0.000001f);
 	count ++;
-	if(count > feq)count=0;
+	if(count >= feq)count=1;
     do{
    	 time2=micros();
      }while((time2-time1)<us);
     time1=time2;
 }
-int isxxHZ(uint16_t k){
-	if(feq==0)return 0;
-    float dT= 1.0f/k;
-    uint16_t cou = dT*feq;
-    if(count%cou==0)return 1;
-
+int fequency_division(uint16_t division){
+    if(count%division==0)return 1;
+    else if(feq==0)return 0;
     return 0;
 }
 
