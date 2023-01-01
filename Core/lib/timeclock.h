@@ -27,10 +27,7 @@ static inline void delay_us(uint32_t val)
 
 static inline void delay_ms(uint32_t val)
 {
-	static uint32_t time_2;
-   	time_2=millis();
-    while((millis() - time_2)<val);
-
+	delay_us(val*1000);
 }
 
 #ifdef __cplusplus

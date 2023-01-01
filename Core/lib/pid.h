@@ -10,10 +10,13 @@ typedef struct{
 	float kp;
 	float ki;
 	float kd;
+
+	float I;
+	float PID;
+	float pre_value;
 }pid_gain_t;
 
-float pidCalcutate(pid_gain_t gain,float fbcontrol,float control,uint16_t dt);
-
+void pidCalculate(pid_gain_t *gain,float sensor,float control,uint16_t dt);
 #ifdef __cplusplus
 }
 #endif

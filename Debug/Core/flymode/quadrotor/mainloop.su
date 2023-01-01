@@ -1,6 +1,10 @@
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:29:6:looptime	48	static
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:39:5:fequency_division	16	static
-C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:24:6:callBackFuncition	16	static
-../Core/flymode/quadrotor/mainloop.c:22:6:main_loop	16	static
-../Core/flymode/quadrotor/mainloop.c:75:6:HAL_TIM_PeriodElapsedCallback	24	static
-../Core/flymode/quadrotor/mainloop.c:83:6:HAL_GPIO_EXTI_Callback	16	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:27:6:callBackFuncition	16	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:54:7:ChannelTodec	16	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:61:5:isRxupdate	4	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:65:6:rxCalibrate	48	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/maths.h:153:19:constrain	24	static
+../Core/flymode/quadrotor/mainloop.c:34:6:main_loop	24	static
+../Core/flymode/quadrotor/mainloop.c:128:6:HAL_TIM_PeriodElapsedCallback	24	static
+../Core/flymode/quadrotor/mainloop.c:136:6:HAL_GPIO_EXTI_Callback	16	static

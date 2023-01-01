@@ -20,7 +20,7 @@ extern "C" {
 /*
  * tao vong lap voi chu ki hz
  */
-#define FEQUENCY_DIV(div) if(fequency_division(div))
+#define FEQUENCY_DIV(div,z) if(fequency_division(div,z))
 uint16_t cou=0;
 uint16_t count=1;
 uint16_t feq=0;
@@ -36,7 +36,8 @@ void looptime(uint16_t us)
      }while((time2-time1)<us);
     time1=time2;
 }
-int fequency_division(uint16_t division){
+int fequency_division(uint16_t division,int k){
+	if(!k)return 0;
     if(count%division==0)return 1;
     else if(feq==0)return 0;
     return 0;

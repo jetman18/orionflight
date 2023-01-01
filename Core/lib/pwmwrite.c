@@ -5,6 +5,36 @@
 #include "spi.h"
 #define LEN 15
 
+#define RELOAD_AFFTER 2500
+
+/**timer pwm
+ *
+ */
+TIM_HandleTypeDef htimm;
+void initPWM(TIM_HandleTypeDef *htim){
+	HAL_TIM_PWM_Start(htim,ch1);
+	HAL_TIM_PWM_Start(htim,ch2);
+	HAL_TIM_PWM_Start(htim,ch3);
+	HAL_TIM_PWM_Start(htim,ch4);
+	__HAL_TIM_SetAutoreload(htim,RELOAD_AFFTER);
+	htimm = *htim;
+}
+
+void writePwm(uint32_t Channel,uint16_t dulty){
+	__HAL_TIM_SetCompare (&htimm,Channel,dulty);
+}
+
+
+
+
+
+
+
+/**external pwm board
+ *
+ *
+ *
+ */
 void checksum(uint8_t *l,int len){
 	uint16_t sum=0;
     for(int i=1;i<len-2;i++){
@@ -26,12 +56,10 @@ void writePWM(uint16_t* m){//6 channel
 		}
 	 checksum(buf,LEN);
 
-	 HAL_GPIO_WritePin(GPIOB,GPIO_PIN_12,GPIO_PIN_RESET);
-	 HAL_SPI_Transmit(&hspi2,buf,LEN,10);
-	 HAL_GPIO_WritePin(GPIOB,GPIO_PIN_12,GPIO_PIN_SET);
+	// HAL_GPIO_WritePin(GPIOB,GPIO_PIN_12,GPIO_PIN_RESET);
+	// HAL_SPI_Transmit(&hspi2,buf,LEN,10);
+	// HAL_GPIO_WritePin(GPIOB,GPIO_PIN_12,GPIO_PIN_SET);
 
-
-	 //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 	}
 

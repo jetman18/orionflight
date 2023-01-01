@@ -11,10 +11,9 @@
 /*hel*/
 #define LSB_gyr  131.0f
 #define GAIN 0.001f
-#define DEFAULT_SAMPLE_FREQ	333.33f	// sample frequency in Hz
+#define DEFAULT_SAMPLE_FREQ	1000.0f	// sample frequency in Hz
 #define twoKpDef	(2.0f * 15.5f)	// 2 * proportional gain
 #define twoKiDef	(2.0f * 0.0f)	// 2 * integral gain
-#define QMC_ADDR (0x0d<<1)
 
 /*******************************************/
 float twoKp = twoKpDef;	// 2 * proportional gain (Kp)
@@ -30,8 +29,6 @@ float anglesComputed = 0.0f;
 float invSampleFreq = 1.0f / DEFAULT_SAMPLE_FREQ;
 
 /*  configution mpu6500  */
-////////
-
 
 //#define USE_LPF_1_ODER_ACC
 #define ACC_FEQ_CUT  1000  //hz
@@ -41,66 +38,12 @@ int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
 int16_t acc_offs_x, acc_offs_y, acc_offs_z;
 
 
-/**
- *  get gyro raw value
- */
-void mpu_get_gyro(IMU_raw_t *k){
-#ifdef MPU_VIA_I2C
-	  uint8_t buffe[6];
-	  buffe[0]= 0x43;// gyro address
-	  HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffe,1,1);
-	  HAL_I2C_Master_Receive(I2C_PORT,0x68<<1,buffe,6,1);
-
-	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
-	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
-	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
-#endif
-#ifdef MPU_VIA_SPI
-	  uint8_t buffe[6];
-	  buffe[0]= 0x43;// gyro address
-	  buffe[0] |=0x80;
-	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_RESET);
-	  HAL_SPI_Transmit(SPI_PORT,&buffe[0],1,100);
-	  HAL_SPI_Receive(SPI_PORT,buffe,6,100);
-	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_SET);
-
-	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
-	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
-	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
-#endif
-
-	}
-
-/**
- *  get acc raw value
- */
-void mpu_get_acc(IMU_raw_t *k){
-#ifdef MPU_VIA_I2C
-	uint8_t buffe[6];
-	  buffe[0] = 0x3b;// acc address
-	  HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffe,1,1);
-	  HAL_I2C_Master_Receive(I2C_PORT,0x68<<1,buffe,6,1);
-
-	  k->accx=(int16_t)(buffe[0]<<8)|buffe[1];
-	  k->accy=(int16_t)(buffe[2]<<8)|buffe[3];
-	  k->accz=(int16_t)(buffe[4]<<8)|buffe[5];
-#endif
-#ifdef MPU_VIA_SPI
-	  uint8_t buffe[6];
-	  buffe[0] = 0x3b;// acc address
-	  buffe[0] |=0x80;
-	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_RESET);
-	  HAL_SPI_Transmit(SPI_PORT,buffe,1,100);
-	  HAL_SPI_Receive(SPI_PORT,buffe,6,100);
-	  HAL_GPIO_WritePin(GPIO_PORT,GPIO_CS_PIN,GPIO_PIN_SET);
-
-	  k->accx=(int16_t)buffe[0]<<8|buffe[1];
-	  k->accy=(int16_t)buffe[2]<<8|buffe[3];
-	  k->accz=(int16_t)buffe[4]<<8|buffe[5];
-#endif
-}
-
-static void get_offset(){
+SPI_HandleTypeDef mpu_spiport;
+I2C_HandleTypeDef mpu_i2cport;
+GPIO_TypeDef mpu_gpio_port;
+uint16_t mpu_cs_pin;
+const uint8_t mpu_address =0x68;
+void get_offset(){
 	static uint16_t k1,k2;
 	float pitch_acc,roll_acc;
 	IMU_raw_t data;
@@ -108,7 +51,7 @@ static void get_offset(){
 	static int32_t contan_acc[3];
 
 	for(uint16_t i=0;i<2000;i++){
-		
+
         //  acc offset
 		mpu_get_acc(&data);
 		if((data.accx+data.accy+data.accz)!=0)k1++;
@@ -119,18 +62,18 @@ static void get_offset(){
 
 		roll_acc   =-atan2_approx(data.accx,data.accz)*1/RAD;
 		pitch_acc  = atan2_approx(data.accy,data.accz)*1/RAD;
-		
+
 		acc_pitch_offset += pitch_acc;
 		acc_roll_offset  += roll_acc;
-			
-		// gyro offset		
+
+		// gyro offset
 		mpu_get_gyro(&data);
 		if((data.gyrox+data.gyroy+data.gyroz)!=0)k2++;
 		contan_gyro[0] += data.gyrox;
 	    contan_gyro[1] += data.gyroy;
 	    contan_gyro[2] += data.gyroz;
-	   // delay_ms(1);
-	    HAL_Delay(2);
+	    delay_ms(1);
+	    //HAL_Delay(1);
 	}
 
 	if(k1!=0){
@@ -150,53 +93,122 @@ static void get_offset(){
 }
 
 
+void MPU_i2c_init(I2C_HandleTypeDef *i2c){
 
-void MPU_init(){  
-
-#ifdef MPU_VIA_I2C
+	mpu_i2cport = *i2c;
     uint8_t buffer[6];
 
     buffer[0] = 0x6B;
 	buffer[1] = 0x00;
-	HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffer,2,1);
+	HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffer,2,1);
 	// Configure gyro(500dps full scale)
 	buffer[0] = 0x1B;
 	buffer[1] = 0x08;
-	HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffer,2,1);
+	HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffer,2,1);
 	// Configure accelerometer(+/- 8g)
 	buffer[0] = 0x1C;
 	buffer[1] = 0x00;
-	HAL_I2C_Master_Transmit(I2C_PORT,0x68<<1,buffer,2,1);
-#endif
-#ifdef MPU_VIA_SPI
-    uint8_t data[2];
+	HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffer,2,1);
+	get_offset();
+}
 
+void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef *csspin,uint16_t pin){
+	mpu_gpio_port = *csspin;
+	mpu_spiport = *spiportt;
+	mpu_cs_pin = pin;
+
+    uint8_t data[2];
 	data[0]=0x6b;
 	data[1]=0x00;
-	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&hspi1,data,2,100);
-	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
+
+	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&mpu_spiport,data,2,100);
+	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 
 	data[0]=0x1b;
 	data[1]=0x00;
-	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&hspi1,data,2,100);
-	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
+	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&mpu_spiport,data,2,100);
+	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 
 	data[0]=0x1c;
 	data[1]=0x00;
-	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&hspi1,data,2,100);
-	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
-
-#endif
+	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&mpu_spiport,data,2,100);
+	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 	get_offset();
-	// Finish setup MPU-6050 register
+
 }
+/**
+ *  get gyro raw value
+ */
+void mpu_get_gyro(IMU_raw_t *k){
+#ifdef MPU_VIA_I2C
+	  uint8_t buffe[6];
+	  buffe[0]= 0x43;// gyro address
+	  HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffe,1,1);
+	  HAL_I2C_Master_Receive(&mpu_i2cport,mpu_address,buffe,6,1);
+
+	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+#ifdef MPU_VIA_SPI
+	  uint8_t buffe[6];
+	  buffe[0]= 0x43;// gyro address
+	  buffe[0] |=0x80;
+	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(&mpu_spiport,&buffe[0],1,100);
+	  HAL_SPI_Receive(&mpu_spiport,buffe,6,100);
+	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+
+	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+
+	}
+
+/**
+ *  get acc raw value
+ */
+void mpu_get_acc(IMU_raw_t *k){
+#ifdef MPU_VIA_I2C
+	uint8_t buffe[6];
+	  buffe[0] = 0x3b;// acc address
+	  HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffe,1,1);
+	  HAL_I2C_Master_Receive(&mpu_i2cport,mpu_address,buffe,6,1);
+
+	  k->accx=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->accy=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->accz=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+#ifdef MPU_VIA_SPI
+	  uint8_t buffe[6];
+	  buffe[0] = 0x3b;// acc address
+	  buffe[0] |=0x80;
+	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(&mpu_spiport,buffe,1,100);
+	  HAL_SPI_Receive(&mpu_spiport,buffe,6,100);
+	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+
+	  k->accx=(int16_t)buffe[0]<<8|buffe[1];
+	  k->accy=(int16_t)buffe[2]<<8|buffe[3];
+	  k->accz=(int16_t)buffe[4]<<8|buffe[5];
+#endif
+}
+
 
 
 float Pitch_acc,Roll_acc;
 IMU_raw_t p;
+void gyro_calib(float *x,float *y,float *z,uint16_t DT){
+	float lsb2degre =(DT*0.000001)/LSB_gyr;
+	mpu_get_gyro(&p);
+    *x  = (float)(p.gyrox -gyr_offs_x)*lsb2degre;
+    *y  = (float)(p.gyroy -gyr_offs_y)*lsb2degre;
+    *z  = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
+}
 void MPU_update(euler_angle_t *m,uint16_t DT){
 
 
@@ -204,13 +216,9 @@ void MPU_update(euler_angle_t *m,uint16_t DT){
 	float lsb2degre =(DT*0.000001)/LSB_gyr;
 
 	mpu_get_gyro(&p);
-
-
     m->pitch += (float)(p.gyrox -gyr_offs_x)*lsb2degre;
     m->roll  += (float)(p.gyroy -gyr_offs_y)*lsb2degre;
-    m->yaw   = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
-
-
+    m->yaw    = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
 
 	if(m->pitch>180.0f)m->pitch  -= 360.0f;
 	else if(m->pitch<-180.0f)m->pitch += 360.0f;
@@ -247,18 +255,10 @@ void MPU_update(euler_angle_t *m,uint16_t DT){
 #ifndef USE_LPF_1_ODER_ACC
 	m->pitch +=GAIN*(Pitch_acc-m->pitch);
 	m->roll  +=GAIN*(Roll_acc-m->roll);
+	//m->yaw   +=kalman_gain*(MAG_yaw-m->yaw);
 #endif
 
-	//m->yaw   +=kalman_gain*(MAG_yaw-m->yaw);
-
-    /*
 	
-    acc
-	 xx = p.accx-acc_offs_x;
-     yy = p.accy- acc_offs_y;
-	 xc = xx*cos_approx(m->roll*RAD) + yy*sin_approx(m->roll*RAD)*sin_approx(m->pitch*RAD) +p.accz*sin_approx(m->roll*RAD)*cos_approx(m->pitch*RAD);
-     yc = yy*cos_approx(m->pitch*RAD) - p.accz*sin_approx(m->pitch*RAD);
-	 */
 
 }
 
@@ -266,60 +266,81 @@ void MPU_update(euler_angle_t *m,uint16_t DT){
  *@qmc5883l
  *@
  */
-void qmc5883_init(){
+
+int16_t calib_axi[3];
+const int16_t  calibrate_xyz[3]={167,-594,393};
+const uint8_t qmc_addres = (0x0d<<1);
+I2C_HandleTypeDef qmc_i2cport;
+void qmc5883_init(I2C_HandleTypeDef *i2cport){
+	qmc_i2cport = *i2cport;
     uint8_t buf[2];
     buf[0]=0x0b;
     buf[1]=0X01;
-    HAL_I2C_Master_Transmit(I2C_PORT,QMC_ADDR,buf,2, 1);
+    HAL_I2C_Master_Transmit(&qmc_i2cport,qmc_addres,buf,2, 1);
     buf[0]=0x09;
     buf[1]=0X1D;
-    HAL_I2C_Master_Transmit(I2C_PORT,QMC_ADDR,buf,2, 1);
+    HAL_I2C_Master_Transmit(&qmc_i2cport,qmc_addres,buf,2, 1);
 }
+void qmc_get_raw(MAG_t *t){
+	uint8_t buf[6];
+	HAL_I2C_Mem_Read(&qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
+	t->mx=((int16_t)buf[1]<<8|buf[0]) - calibrate_xyz[0];
+	t->my=((int16_t)buf[3]<<8|buf[2]) - calibrate_xyz[1];
+	t->mz=((int16_t)buf[5]<<8|buf[4]) - calibrate_xyz[2];
+
+	t->compas=atan2_approx(t->mx,t->my)*180.0f/3.1415f;
+	if(t->compas<0)t->compas=360.0f + t->compas;
+}
+
 void qmc_get_values(MAG_t *t,float pitch,float roll){
-	  uint8_t datas;
-	  static float mx,my;
-	  static uint8_t buf[6];
-	  HAL_I2C_Mem_Read(I2C_PORT, 0x1A, 0x06, 1,&datas, 1, 1);
-	  if((datas && 0x01)==0x01){
-			HAL_I2C_Mem_Read(I2C_PORT,QMC_ADDR,0x00,1,buf,6,1);
-			t->mx=(int16_t)buf[1]<<8|(int16_t)buf[0];
-			t->my=(int16_t)buf[3]<<8|(int16_t)buf[2];
-			t->mz=(int16_t)buf[5]<<8|(int16_t)buf[4];
-            mx = t->mx*cos_approx(-pitch) + t->my*sin_approx(-pitch)*sin_approx(roll) + t->mz*sin_approx(-pitch)*cos_approx(-roll);
-	        my = t->my*(cos_approx(-roll) - t->mz*sin_approx(-roll));
 
-	        t->compas=atan2_approx(my,mx)*180.0f/3.1415f;
-			if(t->compas<0)t->compas=360.0f + t->compas;
-		  }
+	  float mx,my;
+	  uint8_t buf[6];
+
+		HAL_I2C_Mem_Read(&qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
+		t->mx=((int16_t)buf[1]<<8|buf[0]) - calibrate_xyz[0];
+		t->my=((int16_t)buf[3]<<8|buf[2]) - calibrate_xyz[1];
+		t->mz=((int16_t)buf[5]<<8|buf[4]) - calibrate_xyz[2];
+
+		mx = (float)t->mx*cos_approx(-pitch) + (float)t->my*sin_approx(-pitch)*sin_approx(roll) + (float)t->mz*sin_approx(-pitch)*cos_approx(roll);
+		my = (float)t->my*(cos_approx(roll) + (float)t->mz*sin_approx(roll));
+
+		t->compas=atan2_approx(my,mx)*180.0f/3.1415f;
+		if(t->compas<0)t->compas=360.0f + t->compas;
+
 }
-void magnet_sensor_calibrate(){
-	uint8_t datas;
-	int16_t max_val[] = {-32768,-32768,-32768};
-	int16_t min_val[] = {32768, 32768, 32768};
 
-	for(int i=0;i<1000;i++){
-		HAL_I2C_Mem_Read(I2C_PORT,0x1A, 0x06, 1,&datas, 1,1);
-		if((datas&0x01)==1){
-			uint8_t buf[6];
-			float mx,my,mz;
-			HAL_I2C_Mem_Read(I2C_PORT,QMC_ADDR,0x00,1,buf,6,1);
-			mx=(int16_t)(buf[1])<<8|(int16_t)buf[0];
-			my=(int16_t)(buf[3])<<8|(int16_t)buf[2];
-			mz=(int16_t)(buf[5])<<8|(int16_t)buf[4];
+void magnet_sensor_calibrate(){
+	int16_t max_val[] = {-32767,-32767,-32767};
+	int16_t min_val[] = {32767, 32767, 32767};
+	int16_t mx,my,mz;
+	uint8_t buf[6];
+	for(int i=0;i<8000;i++){
+			HAL_I2C_Mem_Read(&qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
+			mx=(int16_t)(buf[1])<<8|buf[0];
+			my=(int16_t)(buf[3])<<8|buf[2];
+			mz=(int16_t)(buf[5])<<8|buf[4];
 
 			if(mx > max_val[0]) max_val[0] = mx;
-			else if(mx < min_val[0]) min_val[0] = mx;
+			if(mx < min_val[0]) min_val[0] = mx;
 
 			if(my > max_val[1]) max_val[1] = my;
-			else if(my < min_val[1]) min_val[1] = my;
+			if(my < min_val[1]) min_val[1] = my;
 
 			if(mz > max_val[2]) max_val[2] = mz;
-			else if(mz < min_val[2]) min_val[2] = mz;
-	    }
-	HAL_Delay(10);
+			if(mz < min_val[2]) min_val[2] = mz;
+	        HAL_Delay(5);
     }
+	for(int i=0;i<3;i++){
+		if((max_val[i]*min_val[i]) < 0){
+			calib_axi[i] = (max_val[i] + min_val[i])/2;
+		}
+		else{
+		    calib_axi[i] = (max_val[i] - min_val[i])/2;
+		}
+	}
 }
-//-------------------------------------------------------------------------------------------
+//------------------------------------------------
 
 static float invSqrt_(float x)
 {
@@ -333,13 +354,25 @@ static float invSqrt_(float x)
 	return y;
 }
 
+
+void mpu_get_gyro_calib(IMU_raw_t *k,uint16_t DT){
+	// gyro calibrate
+	float lsb2degre =(DT*0.000001)/LSB_gyr;
+	mpu_get_gyro(k);
+	k->gyrox += (float)(k->gyrox -gyr_offs_x)*lsb2degre;
+    k->gyroy  += (float)(k->gyroy -gyr_offs_y)*lsb2degre;
+    k->gyroz  += (float)(k->gyroz -gyr_offs_z)*lsb2degre;
+
+	}
 void computeAnglesFromQuaternion(euler_angle_t *m)
 {
-	m->roll = atan2_approx(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2);
-	m->pitch = asinf(-2.0f * (q1*q3 - q0*q2));
-	m->yaw = atan2_approx(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3);
+	m->roll = 57.29577*atan2_approx(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2);
+	m->pitch =  57.29577*asinf(-2.0f * (q1*q3 - q0*q2));
+	m->yaw =  57.29577*atan2_approx(q1*q2 + q0*q3, 0.5f - q2*q2 - q3*q3);
 	anglesComputed = 1;
 }
+
+
 void updateIMU(float gx, float gy, float gz, float ax, float ay, float az)
 {
 	float recipNorm;

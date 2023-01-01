@@ -92,7 +92,7 @@ int main(void)
   MX_TIM4_Init();
   MX_SPI1_Init();
   MX_I2C2_Init();
-  MX_SPI2_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
     main_loop();// inti loop
     // ptotototot
