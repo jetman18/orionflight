@@ -10,7 +10,7 @@
 #include "debug.h"
 /*hel*/
 #define LSB_gyr  131.0f
-#define GAIN 0.001f
+#define GAIN 0.0005f
 #define DEFAULT_SAMPLE_FREQ	1000.0f	// sample frequency in Hz
 #define twoKpDef	(2.0f * 15.5f)	// 2 * proportional gain
 #define twoKiDef	(2.0f * 0.0f)	// 2 * integral gain
@@ -29,7 +29,6 @@ float anglesComputed = 0.0f;
 float invSampleFreq = 1.0f / DEFAULT_SAMPLE_FREQ;
 
 /*  configution mpu6500  */
-
 //#define USE_LPF_1_ODER_ACC
 #define ACC_FEQ_CUT  1000  //hz
 
@@ -38,11 +37,6 @@ int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
 int16_t acc_offs_x, acc_offs_y, acc_offs_z;
 
 
-SPI_HandleTypeDef mpu_spiport;
-I2C_HandleTypeDef mpu_i2cport;
-GPIO_TypeDef mpu_gpio_port;
-uint16_t mpu_cs_pin;
-const uint8_t mpu_address =0x68;
 void get_offset(){
 	static uint16_t k1,k2;
 	float pitch_acc,roll_acc;
@@ -93,6 +87,17 @@ void get_offset(){
 }
 
 
+/* @ init mpu
+ *
+ *
+ * */
+SPI_HandleTypeDef mpu_spi_port;
+I2C_HandleTypeDef mpu_i2cport;
+GPIO_TypeDef *mpu_gpio_port = NULL;
+uint16_t mpu_cs_pin;
+
+const uint8_t mpu_address =(0x68<<1);
+
 void MPU_i2c_init(I2C_HandleTypeDef *i2c){
 
 	mpu_i2cport = *i2c;
@@ -100,6 +105,7 @@ void MPU_i2c_init(I2C_HandleTypeDef *i2c){
 
     buffer[0] = 0x6B;
 	buffer[1] = 0x00;
+
 	HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffer,2,1);
 	// Configure gyro(500dps full scale)
 	buffer[0] = 0x1B;
@@ -112,30 +118,29 @@ void MPU_i2c_init(I2C_HandleTypeDef *i2c){
 	get_offset();
 }
 
-void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef *csspin,uint16_t pin){
-	mpu_gpio_port = *csspin;
-	mpu_spiport = *spiportt;
+void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t pin){
+	mpu_gpio_port = gpio_port;
+	mpu_spi_port = *spiportt;
 	mpu_cs_pin = pin;
 
     uint8_t data[2];
 	data[0]=0x6b;
 	data[1]=0x00;
-
-	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&mpu_spiport,data,2,100);
-	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&mpu_spi_port,data,2,100);
+	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 
 	data[0]=0x1b;
 	data[1]=0x00;
-	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&mpu_spiport,data,2,100);
-	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&mpu_spi_port,data,2,100);
+	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 
 	data[0]=0x1c;
 	data[1]=0x00;
-	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&mpu_spiport,data,2,100);
-	HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	HAL_SPI_Transmit(&mpu_spi_port,data,2,100);
+	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 	get_offset();
 
 }
@@ -157,10 +162,10 @@ void mpu_get_gyro(IMU_raw_t *k){
 	  uint8_t buffe[6];
 	  buffe[0]= 0x43;// gyro address
 	  buffe[0] |=0x80;
-	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
-	  HAL_SPI_Transmit(&mpu_spiport,&buffe[0],1,100);
-	  HAL_SPI_Receive(&mpu_spiport,buffe,6,100);
-	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(&mpu_spi_port,&buffe[0],1,100);
+	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 
 	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
 	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
@@ -187,10 +192,10 @@ void mpu_get_acc(IMU_raw_t *k){
 	  uint8_t buffe[6];
 	  buffe[0] = 0x3b;// acc address
 	  buffe[0] |=0x80;
-	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
-	  HAL_SPI_Transmit(&mpu_spiport,buffe,1,100);
-	  HAL_SPI_Receive(&mpu_spiport,buffe,6,100);
-	  HAL_GPIO_WritePin(&mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(&mpu_spi_port,buffe,1,100);
+	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 
 	  k->accx=(int16_t)buffe[0]<<8|buffe[1];
 	  k->accy=(int16_t)buffe[2]<<8|buffe[3];
@@ -200,8 +205,8 @@ void mpu_get_acc(IMU_raw_t *k){
 
 
 
-float Pitch_acc,Roll_acc;
-IMU_raw_t p;
+static float Pitch_acc,Roll_acc;
+static IMU_raw_t p;
 void gyro_calib(float *x,float *y,float *z,uint16_t DT){
 	float lsb2degre =(DT*0.000001)/LSB_gyr;
 	mpu_get_gyro(&p);

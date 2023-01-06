@@ -7,10 +7,10 @@
 #define APPLY_LPF
 #define NS_TO_SEC(x)  (float)((x)*0.000001f)
 #define MAX_I   100
-#define FCUT_LPF 40.0f    //HZ
+#define FCUT_LPF 100.0f    //HZ
 #define PID_MAX_VAL 300.0f
 
-float error,P,D;
+static float error,P,D;
 void pidCalculate(pid_gain_t *gain,float sensor,float control,uint16_t dt){
 
     error =  sensor - control;

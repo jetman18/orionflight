@@ -37,7 +37,8 @@ Core/flymode/quadrotor/mainloop.o: ../Core/flymode/quadrotor/mainloop.c \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pid.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/debug.h \
- C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/maths.h
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/maths.h \
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/lpf.h
 ../Core/flymode/quadrotor/mainloop.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/sensor.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
@@ -81,3 +82,4 @@ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pid.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/debug.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/maths.h:
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/lpf.h:

@@ -5,7 +5,7 @@
 #include "spi.h"
 #define LEN 15
 
-#define RELOAD_AFFTER 2500
+#define RELOAD_AFFTER 2200
 
 /**timer pwm
  *

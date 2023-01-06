@@ -35,10 +35,9 @@ typedef struct{
 
 }IMU_t;
 
-void spi_sensor_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef *csspin,uint16_t pin);
-void i2c_sensor_port_init(I2C_HandleTypeDef *i2c);
+
 void MPU_i2c_init(I2C_HandleTypeDef *i2c);
-void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef *csspin,uint16_t pin);
+void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t pin);
 void mpu_get_acc(IMU_raw_t*);
 void mpu_get_gyro(IMU_raw_t*);
 void gyro_calib(float *x,float *y,float *z,uint16_t DT);

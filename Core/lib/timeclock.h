@@ -12,7 +12,7 @@ extern "C" {
 #define micros() (micross + __HAL_TIM_GET_COUNTER(&htim4))
 #define millis() (micross/1000UL)
 #define reset()   (micross=0)
-#define callBack() (micross += 0xffff)
+#define callBack() (micross += 0xffff-1)
 #define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
 
 static uint64_t micross;
