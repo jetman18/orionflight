@@ -1,5 +1,6 @@
 #include "mainloop.h"
-#include "sensor.h"
+#include "mpu6500.h"
+#include "qmc5883.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -40,16 +41,17 @@ void main_loop(){
 
 	//---external------------------------------
 
-	MPU_spi_init(&hspi1,GPIOA,GPIO_PIN_4);
-	initPWM(&htim2);
+	//MPU_spi_init(&hspi1,GPIOA,GPIO_PIN_4);
+	//initPWM(&htim2);
 	qmc5883_init(&hi2c2);
+	magnet_sensor_calibrate();
 
 	//magnet_sensor_calibrate();
 
 	/*init pid gain*/
-	pitch_t.kp =3.3f;
-	pitch_t.ki =0.5f;
-	pitch_t.kd =1.0f;
+	pitch_t.kp =3.3f;   //3.3f
+	pitch_t.ki =0.5f;  //0.5
+	pitch_t.kd =1.0f;  //1.0f
 	pitch_t.I =0;
 
 	roll_t.kp = pitch_t.kp;
@@ -62,19 +64,21 @@ void main_loop(){
 	yaw_t.kd = 0;
     yaw_t.I  = 0;
 
-    /*
+
 	while((rx.ch[2] > MINIMUMTHROTLE) || (rx.ch[2]<1000) ){
            HAL_Delay(300);
            HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 	}
 	rxCalibrate(rx,&cl_ch1,&cl_ch2,&cl_ch4);
-   */
+
 
 	while(1){
 
 
        MPU_update(&mpu,2000);
-       qmc_get_values(&t,0,0);
+
+      // qmc_get_values(&t,0,0);
+
         //mahony filter
 		//mpu_get_gyro_calib(&k,1000);
         //updateIMU(k.gyrox*0.01745f,k.gyroy*0.01745f,k.gyroz*0.01745f,k.accx,k.accy,k.accz);
@@ -84,7 +88,7 @@ void main_loop(){
 
        //FEQUENCY_DIV(2,DISABLE)
       //{
-
+     /*
     	if(rx.ch[2]>MINIMUMTHROTLE){
             // pid calculate
     		pidCalculate(&pitch_t,mpu.pitch,Ch2,2000);
@@ -122,7 +126,7 @@ void main_loop(){
     		writePwm(ch2,moto2);
     		writePwm(ch3,moto3);
     		writePwm(ch4,moto4);
-
+   */
     // FEQUENCY_DIV(100,ENABLE){
 	   //  HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
 	 //}

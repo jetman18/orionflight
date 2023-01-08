@@ -1,4 +1,4 @@
-#include "sensor.h"
+#include "mpu6500.h"
 #include "stm32f1xx_hal.h"
 #include "maths.h"
 #include "i2c.h"
@@ -216,21 +216,20 @@ void gyro_calib(float *x,float *y,float *z,uint16_t DT){
 }
 void MPU_update(euler_angle_t *m,uint16_t DT){
 
-
 	// gyro calibrate
 	float lsb2degre =(DT*0.000001)/LSB_gyr;
 
 	mpu_get_gyro(&p);
     m->pitch += (float)(p.gyrox -gyr_offs_x)*lsb2degre;
     m->roll  += (float)(p.gyroy -gyr_offs_y)*lsb2degre;
-    m->yaw    = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
+    m->yaw   = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
 
 	if(m->pitch>180.0f)m->pitch  -= 360.0f;
 	else if(m->pitch<-180.0f)m->pitch += 360.0f;
-	
+
     if(m->roll>180.0f)m->roll -= 360.0f;
     else if(m->roll<-180.0f)m->roll += 360.0f;
-	
+
 	//if(m->yaw>360.0f)m->yaw  -= 360.0f;
 	//else if(m->yaw<0.0f)m->yaw  += 360.0f;
 
@@ -241,7 +240,7 @@ void MPU_update(euler_angle_t *m,uint16_t DT){
 	mpu_get_acc(&p);
 	Roll_acc   =(-atan2_approx((float)p.accx,(float)p.accz)*1/RAD - acc_roll_offset);
 	Pitch_acc  = (atan2_approx((float)p.accy,(float)p.accz)*1/RAD - acc_pitch_offset);
-	
+
 
 #ifdef USE_LPF_1_ODER_ACC
 
@@ -260,92 +259,10 @@ void MPU_update(euler_angle_t *m,uint16_t DT){
 #ifndef USE_LPF_1_ODER_ACC
 	m->pitch +=GAIN*(Pitch_acc-m->pitch);
 	m->roll  +=GAIN*(Roll_acc-m->roll);
-	//m->yaw   +=kalman_gain*(MAG_yaw-m->yaw);
+	///m->yaw   +=GAIN*(MAG_yaw-m->yaw);
 #endif
 
-	
-
 }
-
-/**
- *@qmc5883l
- *@
- */
-
-int16_t calib_axi[3];
-const int16_t  calibrate_xyz[3]={167,-594,393};
-const uint8_t qmc_addres = (0x0d<<1);
-I2C_HandleTypeDef qmc_i2cport;
-void qmc5883_init(I2C_HandleTypeDef *i2cport){
-	qmc_i2cport = *i2cport;
-    uint8_t buf[2];
-    buf[0]=0x0b;
-    buf[1]=0X01;
-    HAL_I2C_Master_Transmit(&qmc_i2cport,qmc_addres,buf,2, 1);
-    buf[0]=0x09;
-    buf[1]=0X1D;
-    HAL_I2C_Master_Transmit(&qmc_i2cport,qmc_addres,buf,2, 1);
-}
-void qmc_get_raw(MAG_t *t){
-	uint8_t buf[6];
-	HAL_I2C_Mem_Read(&qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
-	t->mx=((int16_t)buf[1]<<8|buf[0]) - calibrate_xyz[0];
-	t->my=((int16_t)buf[3]<<8|buf[2]) - calibrate_xyz[1];
-	t->mz=((int16_t)buf[5]<<8|buf[4]) - calibrate_xyz[2];
-
-	t->compas=atan2_approx(t->mx,t->my)*180.0f/3.1415f;
-	if(t->compas<0)t->compas=360.0f + t->compas;
-}
-
-void qmc_get_values(MAG_t *t,float pitch,float roll){
-
-	  float mx,my;
-	  uint8_t buf[6];
-
-		HAL_I2C_Mem_Read(&qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
-		t->mx=((int16_t)buf[1]<<8|buf[0]) - calibrate_xyz[0];
-		t->my=((int16_t)buf[3]<<8|buf[2]) - calibrate_xyz[1];
-		t->mz=((int16_t)buf[5]<<8|buf[4]) - calibrate_xyz[2];
-
-		mx = (float)t->mx*cos_approx(-pitch) + (float)t->my*sin_approx(-pitch)*sin_approx(roll) + (float)t->mz*sin_approx(-pitch)*cos_approx(roll);
-		my = (float)t->my*(cos_approx(roll) + (float)t->mz*sin_approx(roll));
-
-		t->compas=atan2_approx(my,mx)*180.0f/3.1415f;
-		if(t->compas<0)t->compas=360.0f + t->compas;
-
-}
-
-void magnet_sensor_calibrate(){
-	int16_t max_val[] = {-32767,-32767,-32767};
-	int16_t min_val[] = {32767, 32767, 32767};
-	int16_t mx,my,mz;
-	uint8_t buf[6];
-	for(int i=0;i<8000;i++){
-			HAL_I2C_Mem_Read(&qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
-			mx=(int16_t)(buf[1])<<8|buf[0];
-			my=(int16_t)(buf[3])<<8|buf[2];
-			mz=(int16_t)(buf[5])<<8|buf[4];
-
-			if(mx > max_val[0]) max_val[0] = mx;
-			if(mx < min_val[0]) min_val[0] = mx;
-
-			if(my > max_val[1]) max_val[1] = my;
-			if(my < min_val[1]) min_val[1] = my;
-
-			if(mz > max_val[2]) max_val[2] = mz;
-			if(mz < min_val[2]) min_val[2] = mz;
-	        HAL_Delay(5);
-    }
-	for(int i=0;i<3;i++){
-		if((max_val[i]*min_val[i]) < 0){
-			calib_axi[i] = (max_val[i] + min_val[i])/2;
-		}
-		else{
-		    calib_axi[i] = (max_val[i] - min_val[i])/2;
-		}
-	}
-}
-//------------------------------------------------
 
 static float invSqrt_(float x)
 {
