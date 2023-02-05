@@ -19,7 +19,7 @@ void qmc5883_init(I2C_HandleTypeDef *i2cport);
 void qmc_get_raw(MAG_t *t);
 void qmc_get_values(MAG_t *t,float pitch,float roll);
 void magnet_sensor_calibrate();
-
+void qmc_get_3axil_values(MAG_t *t);
 #ifdef __cplusplus
 }
 #endif

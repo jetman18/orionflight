@@ -6,8 +6,7 @@
 extern "C" {
 #endif
 
-#include "stdio.h"
-#include "gpio.h"
+#include "tim.h"
 
 enum pwm_channel{
 	ch1 = TIM_CHANNEL_1,
@@ -16,8 +15,10 @@ enum pwm_channel{
 	ch4 = TIM_CHANNEL_4
 };
 void initPWM(TIM_HandleTypeDef *htim);
-void writePwm(uint32_t Channel,uint16_t dulty);
-void writePWM(uint16_t* m);
+void initOneshot125(TIM_HandleTypeDef *htim);
+
+void writePwm(uint32_t Channel,int16_t dulty);
+void writeOneshot125(uint32_t Channel,int16_t dulty);
 #ifdef __cplusplus
 }
 #endif

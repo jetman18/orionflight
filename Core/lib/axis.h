@@ -18,8 +18,9 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
 
+#ifndef _AXIS_H_
+#define _AXIS_H_
 typedef enum {
     X = 0,
     Y,
@@ -45,3 +46,5 @@ typedef enum {
 #define ANGLE_INDEX_COUNT 2
 
 #define GET_DIRECTION(isReversed) ((isReversed) ? -1 : 1)
+
+#endif

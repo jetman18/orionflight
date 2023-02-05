@@ -14,9 +14,12 @@ typedef struct{
 	float I;
 	float PID;
 	float pre_value;
-}pid_gain_t;
 
-void pidCalculate(pid_gain_t *gain,float sensor,float control,uint16_t dt);
+	uint32_t p_time;
+	uint16_t delta_time;
+}pid__t;
+
+void pidCalculate(pid__t *gain,float sensor,float control);
 #ifdef __cplusplus
 }
 #endif

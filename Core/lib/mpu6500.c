@@ -8,14 +8,19 @@
 #include "spi.h"
 #include "timeclock.h"
 #include "debug.h"
+#include "axis.h"
 /*hel*/
 #define LSB_gyr  131.0f
-#define GAIN 0.0005f
-#define DEFAULT_SAMPLE_FREQ	1000.0f	// sample frequency in Hz
+#define ACCSMOOTH
+
+/*
+#define GAIN 0.0005f  //0.0005
+#define YAW_GAIN 0.01f  //0.0005
+#define DEFAULT_SAMPLE_FREQ	250.0f	// sample frequency in Hz
 #define twoKpDef	(2.0f * 15.5f)	// 2 * proportional gain
 #define twoKiDef	(2.0f * 0.0f)	// 2 * integral gain
+#define ACC_FEQ_CUT  1000  //hz
 
-/*******************************************/
 float twoKp = twoKpDef;	// 2 * proportional gain (Kp)
 float twoKi = twoKiDef;	// 2 * integral gain (Ki)
 float q0 = 1.0f;
@@ -27,82 +32,156 @@ float integralFBy = 0.0f;
 float integralFBz = 0.0f;
 float anglesComputed = 0.0f;
 float invSampleFreq = 1.0f / DEFAULT_SAMPLE_FREQ;
+*/
 
-/*  configution mpu6500  */
-//#define USE_LPF_1_ODER_ACC
-#define ACC_FEQ_CUT  1000  //hz
-
-static float acc_pitch_offset,acc_roll_offset;
 int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
-int16_t acc_offs_x, acc_offs_y, acc_offs_z;
-
-
-void get_offset(){
-	static uint16_t k1,k2;
-	float pitch_acc,roll_acc;
-	IMU_raw_t data;
-	static int32_t contan_gyro[3];
-	static int32_t contan_acc[3];
-
-	for(uint16_t i=0;i<2000;i++){
-
-        //  acc offset
-		mpu_get_acc(&data);
-		if((data.accx+data.accy+data.accz)!=0)k1++;
-
-        contan_acc[0] += data.accx;
-        contan_acc[1] += data.accy;
-        contan_acc[2] += data.accz;
-
-		roll_acc   =-atan2_approx(data.accx,data.accz)*1/RAD;
-		pitch_acc  = atan2_approx(data.accy,data.accz)*1/RAD;
-
-		acc_pitch_offset += pitch_acc;
-		acc_roll_offset  += roll_acc;
-
-		// gyro offset
-		mpu_get_gyro(&data);
-		if((data.gyrox+data.gyroy+data.gyroz)!=0)k2++;
-		contan_gyro[0] += data.gyrox;
-	    contan_gyro[1] += data.gyroy;
-	    contan_gyro[2] += data.gyroz;
-	    delay_ms(1);
-	    //HAL_Delay(1);
-	}
-
-	if(k1!=0){
-	  acc_offs_x = contan_acc[0]/k1;
-      acc_offs_y = contan_acc[1]/k1;
-      acc_offs_z = contan_acc[2]/k1;
-
-      acc_pitch_offset /=(float)k1;
-      acc_roll_offset  /=(float)k1;
-    }
-
-    if(k2!=0){
-      gyr_offs_x = contan_gyro[0]/k2;
-      gyr_offs_y = contan_gyro[1]/k2;
-      gyr_offs_z = contan_gyro[2]/k2;
-    }
-}
-
-
-/* @ init mpu
- *
- *
- * */
+float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
 SPI_HandleTypeDef mpu_spi_port;
 I2C_HandleTypeDef mpu_i2cport;
 GPIO_TypeDef *mpu_gpio_port = NULL;
 uint16_t mpu_cs_pin;
 
+faxis3_t vect = {0.0f,0.0f,1.0f}; // x y z
 const uint8_t mpu_address =(0x68<<1);
 
-void MPU_i2c_init(I2C_HandleTypeDef *i2c){
 
+static void normalizeV(axis3_t *src)
+{
+    int32_t sum;
+	sum = src->x*src->x + src->y*src->y + src->z*src->z;
+    int32_t length = sqrt(sum);
+    if (length != 0) {
+        src->x = src->x / length;
+        src->y = src->y / length;
+        src->z = src->z / length;
+    }
+}
+
+static int mpu_read_gyro(axis3_t *k){
+	  axis3_t p_val =*k;
+#ifdef MPU_VIA_I2C
+	  uint8_t buffe[6];
+	  buffe[0]= 0x43;// gyro address
+	  HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffe,1,1);
+	  HAL_I2C_Master_Receive(&mpu_i2cport,mpu_address,buffe,6,1);
+
+	  k->x=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->y=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->z=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+#ifdef MPU_VIA_SPI
+	  uint8_t buffe[6];
+	  buffe[0]= 0x43;// gyro address
+	  buffe[0] |=0x80;
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(&mpu_spi_port,&buffe[0],1,100);
+	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+
+	  k->x=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->y=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->z=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+      if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z)){
+		return 1;
+	  }
+	  return 0;
+
+	}
+
+
+//get acc raw value
+static int mpu_read_acc(axis3_t *k){
+	axis3_t p_val =*k;
+#ifdef MPU_VIA_I2C
+	uint8_t buffe[6];
+	  buffe[0] = 0x3b;// acc address
+	  HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffe,1,1);
+	  HAL_I2C_Master_Receive(&mpu_i2cport,mpu_address,buffe,6,1);
+
+	  k->x=(int16_t)(buffe[0]<<8)|buffe[1];
+	  k->y=(int16_t)(buffe[2]<<8)|buffe[3];
+	  k->z=(int16_t)(buffe[4]<<8)|buffe[5];
+#endif
+#ifdef MPU_VIA_SPI
+	  uint8_t buffe[6];
+	  buffe[0] = 0x3b;// acc address
+	  buffe[0] |=0x80;
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
+	  HAL_SPI_Transmit(&mpu_spi_port,buffe,1,100);
+	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
+	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+
+	  k->x=(int16_t)buffe[0]<<8|buffe[1];
+	  k->y=(int16_t)buffe[2]<<8|buffe[3];
+	  k->z=(int16_t)buffe[4]<<8|buffe[5];
+#endif
+      if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z)){
+		return 1;
+	  }
+	  return 0;
+}
+static void get_offset(){
+	uint32_t k1 = 0;
+	uint32_t k2 = 0;
+	axis3_t gyro_;
+	axis3_t acc_;
+	int32_t contan_gyro[3];
+	int32_t contan_acc[3];
+
+	for(uint16_t i=0;i<1000;i++){
+		// gyro
+		if(!mpu_read_gyro(&gyro_)){
+			k1++;
+			contan_gyro[X] += gyro_.x;
+	    	contan_gyro[Y] += gyro_.y;
+	    	contan_gyro[Z] += gyro_.z;
+		}
+        // acc
+		if(!mpu_read_acc(&acc_)){
+			k2++;
+			contan_acc[X] += acc_.x;
+	        contan_acc[Y] += acc_.y;
+	        contan_acc[Z] += acc_.z;
+		}
+	    HAL_Delay(1);
+	}
+
+    if(k1 != 0){
+      gyr_offs_x = contan_gyro[X]/k1;
+      gyr_offs_y = contan_gyro[Y]/k1;
+      gyr_offs_z = contan_gyro[Z]/k1;
+    }
+	if(k2 != 0){
+      contan_acc[X] = contan_acc[X]/k2;
+      contan_acc[Y] = contan_acc[Y]/k2;
+      contan_acc[Z] = contan_acc[Z]/k2;
+
+	  int32_t sum =contan_acc[X]*contan_acc[X] +contan_acc[Y]*contan_acc[Y] + contan_acc[Z]*contan_acc[Z];
+      float length = sqrtf((float)sum);
+		if (length != 0.0f) {
+			acc_vect_offs_x = contan_acc[X]/length;
+			acc_vect_offs_y = contan_acc[Y]/length;
+			acc_vect_offs_z = contan_acc[Z]/length;
+
+			vect.x = acc_vect_offs_x;
+			vect.y = acc_vect_offs_y;
+			vect.z = acc_vect_offs_z;
+		}
+    }
+
+    //fail to read mpu
+    if((k1 == 0) && (k2 ==0)){
+    	while(1){
+    		HAL_Delay(100);
+    		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+    	}
+    }
+}
+
+void MPU_i2c_init(I2C_HandleTypeDef *i2c){
 	mpu_i2cport = *i2c;
     uint8_t buffer[6];
-
     buffer[0] = 0x6B;
 	buffer[1] = 0x00;
 
@@ -141,126 +220,102 @@ void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t 
 	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
 	HAL_SPI_Transmit(&mpu_spi_port,data,2,100);
 	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
+	/*get offset values*/
 	get_offset();
 
 }
-/**
- *  get gyro raw value
- */
-void mpu_get_gyro(IMU_raw_t *k){
-#ifdef MPU_VIA_I2C
-	  uint8_t buffe[6];
-	  buffe[0]= 0x43;// gyro address
-	  HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffe,1,1);
-	  HAL_I2C_Master_Receive(&mpu_i2cport,mpu_address,buffe,6,1);
 
-	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
-	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
-	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
-#endif
-#ifdef MPU_VIA_SPI
-	  uint8_t buffe[6];
-	  buffe[0]= 0x43;// gyro address
-	  buffe[0] |=0x80;
-	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
-	  HAL_SPI_Transmit(&mpu_spi_port,&buffe[0],1,100);
-	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
-	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
-
-	  k->gyrox=(int16_t)(buffe[0]<<8)|buffe[1];
-	  k->gyroy=(int16_t)(buffe[2]<<8)|buffe[3];
-	  k->gyroz=(int16_t)(buffe[4]<<8)|buffe[5];
-#endif
-
-	}
-
-/**
- *  get acc raw value
- */
-void mpu_get_acc(IMU_raw_t *k){
-#ifdef MPU_VIA_I2C
-	uint8_t buffe[6];
-	  buffe[0] = 0x3b;// acc address
-	  HAL_I2C_Master_Transmit(&mpu_i2cport,mpu_address,buffe,1,1);
-	  HAL_I2C_Master_Receive(&mpu_i2cport,mpu_address,buffe,6,1);
-
-	  k->accx=(int16_t)(buffe[0]<<8)|buffe[1];
-	  k->accy=(int16_t)(buffe[2]<<8)|buffe[3];
-	  k->accz=(int16_t)(buffe[4]<<8)|buffe[5];
-#endif
-#ifdef MPU_VIA_SPI
-	  uint8_t buffe[6];
-	  buffe[0] = 0x3b;// acc address
-	  buffe[0] |=0x80;
-	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
-	  HAL_SPI_Transmit(&mpu_spi_port,buffe,1,100);
-	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
-	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
-
-	  k->accx=(int16_t)buffe[0]<<8|buffe[1];
-	  k->accy=(int16_t)buffe[2]<<8|buffe[3];
-	  k->accz=(int16_t)buffe[4]<<8|buffe[5];
-#endif
+static void gyro_read(faxis3_t *angle,uint16_t dt){
+	float lsb2rad = dt*0.000001f*0.00013323f;
+	axis3_t p;
+	if(mpu_read_gyro(&p)){
+		return ;
+	};
+    angle->x  = (float)(p.x - gyr_offs_x)*lsb2rad;
+    angle->y  = (float)(p.y - gyr_offs_y)*lsb2rad;
+    angle->z  = (float)(p.z - gyr_offs_z)*lsb2rad;
 }
 
+static void rotateV(faxis3_t *vector,faxis3_t delta)
+{
+    float mat[3][3];
+    float cosx, sinx, cosy, siny, cosz, sinz;
+    float coszcosx, sinzcosx, coszsinx, sinzsinx;
+	faxis3_t vec;
 
+    cosx = cosf(delta.x);
+    sinx = sinf(delta.x);
+    cosy = cosf(delta.y);
+    siny = sinf(delta.y);
+    cosz = cosf(delta.z);
+    sinz = sinf(delta.z);
 
-static float Pitch_acc,Roll_acc;
-static IMU_raw_t p;
-void gyro_calib(float *x,float *y,float *z,uint16_t DT){
-	float lsb2degre =(DT*0.000001)/LSB_gyr;
-	mpu_get_gyro(&p);
-    *x  = (float)(p.gyrox -gyr_offs_x)*lsb2degre;
-    *y  = (float)(p.gyroy -gyr_offs_y)*lsb2degre;
-    *z  = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
+    coszcosx = cosz * cosx;
+    sinzcosx = sinz * cosx;
+    coszsinx = sinx * cosz;
+    sinzsinx = sinx * sinz;
+
+    mat[0][0] = cosz * cosy;
+    mat[0][1] = -cosy * sinz;
+    mat[0][2] = siny;
+    mat[1][0] = sinzcosx + (coszsinx * siny);
+    mat[1][1] = coszcosx - (sinzsinx * siny);
+    mat[1][2] = -sinx * cosy;
+    mat[2][0] = (sinzsinx) - (coszcosx * siny);
+    mat[2][1] = (coszsinx) + (sinzcosx * siny);
+    mat[2][2] = cosy * cosx;
+
+    vec.x = vector->x * mat[0][0] + vector->y * mat[1][0] + vector->z * mat[2][0];
+    vec.y = vector->x * mat[0][1] + vector->y * mat[1][1] + vector->z * mat[2][1];
+    vec.z = vector->x * mat[0][2] + vector->y * mat[1][2] + vector->z * mat[2][2];
+   
+    vector->x =  vec.x;
+	vector->y =  vec.y;
+	vector->z =  vec.z;
+
 }
-void MPU_update(euler_angle_t *m,uint16_t DT){
 
-	// gyro calibrate
-	float lsb2degre =(DT*0.000001)/LSB_gyr;
+void mpu_update(euler_angle_t *m,uint16_t dt){
+    const float gain_cp =0.999f;
+	const float gain_lpf =0.9f;
+	faxis3_t gyro,acc;
+	static faxis3_t accSmooth;
+	axis3_t  acce;
+	int32_t sum;
+	float length;
 
-	mpu_get_gyro(&p);
-    m->pitch += (float)(p.gyrox -gyr_offs_x)*lsb2degre;
-    m->roll  += (float)(p.gyroy -gyr_offs_y)*lsb2degre;
-    m->yaw   = (float)(p.gyroz -gyr_offs_z)*lsb2degre;
-
-	if(m->pitch>180.0f)m->pitch  -= 360.0f;
-	else if(m->pitch<-180.0f)m->pitch += 360.0f;
-
-    if(m->roll>180.0f)m->roll -= 360.0f;
-    else if(m->roll<-180.0f)m->roll += 360.0f;
-
-	//if(m->yaw>360.0f)m->yaw  -= 360.0f;
-	//else if(m->yaw<0.0f)m->yaw  += 360.0f;
-
-	m->pitch += m->roll   * sin_approx((p.gyroz -gyr_offs_z)*lsb2degre*RAD);
-	m->roll  -= m->pitch  * sin_approx((p.gyroz -gyr_offs_z)*lsb2degre*RAD);
-
-    //  acc calibrate
-	mpu_get_acc(&p);
-	Roll_acc   =(-atan2_approx((float)p.accx,(float)p.accz)*1/RAD - acc_roll_offset);
-	Pitch_acc  = (atan2_approx((float)p.accy,(float)p.accz)*1/RAD - acc_pitch_offset);
-
-
-#ifdef USE_LPF_1_ODER_ACC
-
-	Roll_acc = pt1FilterApply(Roll_acc,ACC_FEQ_CUT,DT*0.000001);
-	Pitch_acc= pt1FilterApply(Pitch_acc,ACC_FEQ_CUT,DT*0.000001);
-
-	 print_float(Roll_acc);
-	 print_char("\n");
-
-	m->pitch +=GAIN*(Pitch_acc-m->pitch);
-	m->roll  +=GAIN*(Roll_acc-m->roll);
-
-
+    gyro_read(&gyro,dt);
+	rotateV(&vect,gyro);
+    mpu_read_acc(&acce);
+	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
+    length = sqrtf((float)sum);
+    if (length != 0) {
+        acc.x = acce.x/length;
+        acc.y = acce.y/length;
+        acc.z = acce.z/length;
+    }
+#ifdef ACCSMOOTH
+    accSmooth.x = accSmooth.x*gain_lpf + (1-gain_lpf)*acc.x;
+	accSmooth.y = accSmooth.y*gain_lpf + (1-gain_lpf)*acc.y;
+	accSmooth.z = accSmooth.z*gain_lpf + (1-gain_lpf)*acc.z;
+#else
+    accSmooth.x = acc.x;
+	accSmooth.y = acc.y;
+	accSmooth.z = acc.z;
 #endif
+    /* Apply complimentary filter */
+    vect.x = vect.x*gain_cp + (1-gain_cp)*accSmooth.x;
+    vect.y = vect.y*gain_cp + (1-gain_cp)*accSmooth.y;
+    vect.z = vect.z*gain_cp + (1-gain_cp)*accSmooth.z;
 
-#ifndef USE_LPF_1_ODER_ACC
-	m->pitch +=GAIN*(Pitch_acc-m->pitch);
-	m->roll  +=GAIN*(Roll_acc-m->roll);
-	///m->yaw   +=GAIN*(MAG_yaw-m->yaw);
-#endif
+	consTrainf(&vect.x,-1,1);
+	consTrainf(&vect.y,-1,1);
+	consTrainf(&vect.z,-1,1);
+
+	/*calculate angles*/
+	m->pitch  = atan2_approx(vect.y,vect.z)*180/M_PIf;
+    m->roll   = atan2_approx(-vect.x, sqrtf(vect.y * vect.y + vect.z * vect.z))*180/M_PIf;
+    m->yaw    = gyro.z;
 
 }
 
@@ -275,17 +330,7 @@ static float invSqrt_(float x)
 	y = y * (1.5f - (halfx * y * y));
 	return y;
 }
-
-
-void mpu_get_gyro_calib(IMU_raw_t *k,uint16_t DT){
-	// gyro calibrate
-	float lsb2degre =(DT*0.000001)/LSB_gyr;
-	mpu_get_gyro(k);
-	k->gyrox += (float)(k->gyrox -gyr_offs_x)*lsb2degre;
-    k->gyroy  += (float)(k->gyroy -gyr_offs_y)*lsb2degre;
-    k->gyroz  += (float)(k->gyroz -gyr_offs_z)*lsb2degre;
-
-	}
+/*
 void computeAnglesFromQuaternion(euler_angle_t *m)
 {
 	m->roll = 57.29577*atan2_approx(q0*q1 + q2*q3, 0.5f - q1*q1 - q2*q2);
@@ -480,4 +525,4 @@ void update(float gx, float gy, float gz, float ax, float ay, float az, float mx
 	q3 *= recipNorm;
 	anglesComputed = 0;
 }
-
+*/

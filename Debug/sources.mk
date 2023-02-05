@@ -25,5 +25,6 @@ Core/Src \
 Core/Startup \
 Core/flymode/quadrotor \
 Core/lib \
+Core/lib/ssd1306 \
 Drivers/STM32F1xx_HAL_Driver/Src \
 

@@ -7,15 +7,26 @@ extern "C" {
 
 #include "stm32f1xx_hal.h"
 
-typedef struct
-{
+typedef struct{
+    int16_t x;
+    int16_t y;
+    int16_t z;
+}axis3_t;
+
+typedef struct{
+    float x;
+    float y;
+    float z;
+}faxis3_t;
+
+
+typedef struct{
     float pitch;
 	float roll;
     float yaw;
 }euler_angle_t;
 
-typedef struct
-{
+typedef struct{
     int16_t accx;
     int16_t accy;
     int16_t accz;
@@ -37,15 +48,10 @@ typedef struct{
 
 void MPU_i2c_init(I2C_HandleTypeDef *i2c);
 void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t pin);
-void mpu_get_acc(IMU_raw_t*);
-void mpu_get_gyro(IMU_raw_t*);
-void gyro_calib(float *x,float *y,float *z,uint16_t DT);
-void MPU_update(euler_angle_t *m,uint16_t dt);
+void mpu_update(euler_angle_t *m,uint16_t dt);
 void updateIMU(float gx, float gy, float gz, float ax, float ay, float az);
 void computeAnglesFromQuaternion(euler_angle_t *m);
-void mpu_get_gyro_calib(IMU_raw_t *k,uint16_t DT);
 void update(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
-
 
 #ifdef __cplusplus
 }

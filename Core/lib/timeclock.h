@@ -16,7 +16,7 @@ extern "C" {
 #define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
 
 static uint64_t micross;
-
+static uint32_t timeone;
 static inline void delay_us(uint32_t val)
 {
 	static uint32_t time_1;
@@ -29,6 +29,15 @@ static inline void delay_ms(uint32_t val)
 {
 	delay_us(val*1000);
 }
+
+static inline void time_start_measure(){
+	timeone = micros();
+}
+
+static inline uint16_t get_measure_time(){
+	return (uint16_t)(micros() - timeone);
+}
+
 
 #ifdef __cplusplus
 }

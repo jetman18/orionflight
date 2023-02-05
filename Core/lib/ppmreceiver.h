@@ -1,5 +1,5 @@
-#ifndef _PPMRECEIVE_
-#define _PPMRECEIVE_
+#ifndef _PPMRECEIVER_
+#define _PPMRECEIVER_
 
 #ifdef __cplusplus
 extern "C" {

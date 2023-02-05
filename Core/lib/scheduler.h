@@ -22,21 +22,20 @@ extern "C" {
  */
 #define FEQUENCY_DIV(div,z) if(fequency_division(div,z))
 
-static uint16_t count=1;
+static uint16_t count_=1;
 static uint16_t feq=0;
-uint64_t time1 =0;
-float dT;
+static uint64_t time1 =0;
 void looptime(uint32_t us)
 {
 	feq = 1/(us*0.000001);
-	count ++;
-	if(count >= feq)count=1;
+	if(count_ >= feq)count_=1;
+	count_ ++;
     while((micros()-time1)<us);
     time1=micros();
 }
 int fequency_division(uint16_t division,int k){
 	if(!k)return 0;
-    if(count%division==0)return 1;
+    if(count_%division==0)return 1;
     else if(feq==0)return 0;
     return 0;
 }

@@ -1,9 +1,11 @@
-C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:29:6:looptime	64	static
-C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:37:5:fequency_division	16	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h:33:20:time_start_measure	4	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h:37:24:get_measure_time	4	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:28:6:looptime	64	static
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:36:5:fequency_division	16	static
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:27:6:callBackFuncition	16	static
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:54:7:ChannelTodec	16	static
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:61:5:isRxupdate	4	static
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ppmreceive.h:65:6:rxCalibrate	48	static
-../Core/flymode/quadrotor/mainloop.c:38:6:main_loop	24	static
-../Core/flymode/quadrotor/mainloop.c:139:6:HAL_TIM_PeriodElapsedCallback	24	static
-../Core/flymode/quadrotor/mainloop.c:147:6:HAL_GPIO_EXTI_Callback	16	static
+../Core/flymode/quadrotor/mainloop.c:46:6:main_loop	8	static
+../Core/flymode/quadrotor/mainloop.c:197:6:HAL_TIM_PeriodElapsedCallback	24	static
+../Core/flymode/quadrotor/mainloop.c:205:6:HAL_GPIO_EXTI_Callback	16	static

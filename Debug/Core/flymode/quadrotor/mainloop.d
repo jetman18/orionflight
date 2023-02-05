@@ -39,7 +39,8 @@ Core/flymode/quadrotor/mainloop.o: ../Core/flymode/quadrotor/mainloop.c \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pid.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/debug.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/maths.h \
- C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/lpf.h
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/lpf.h \
+ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/bmp280.h
 ../Core/flymode/quadrotor/mainloop.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/mpu6500.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
@@ -85,3 +86,4 @@ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/pid.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/debug.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/maths.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/lpf.h:
+C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/bmp280.h:

@@ -7,8 +7,14 @@ extern "C" {
 
 
 #include"maths.h"
-
+#include"math.h"
 // 1oder
+
+typedef struct{
+    float a;
+    float b;
+}lpf_var;
+
 static inline float pt1FilterGain(float f_cut, float dT){
     float RC = 1 / (2 * M_PIf * f_cut);
     return dT / (RC + dT);
