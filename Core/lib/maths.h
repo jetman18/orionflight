@@ -170,7 +170,7 @@ static inline float constrainf(float amt, float low, float high)
         return amt;
 }
 
-static inline float consTrainf(float *amt, float low, float high)
+static inline void consTrainf(float *amt, float low, float high)
 {
     if (*amt < low)
         *amt = low;

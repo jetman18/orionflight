@@ -41,7 +41,7 @@ I2C_HandleTypeDef mpu_i2cport;
 GPIO_TypeDef *mpu_gpio_port = NULL;
 uint16_t mpu_cs_pin;
 
-faxis3_t vect = {0.0f,0.0f,1.0f}; // x y z
+faxis3_t vect = {0,0,0}; // x y z
 const uint8_t mpu_address =(0x68<<1);
 
 
@@ -121,15 +121,16 @@ static int mpu_read_acc(axis3_t *k){
 	  }
 	  return 0;
 }
+
 static void get_offset(){
-	uint32_t k1 = 0;
-	uint32_t k2 = 0;
+	static int32_t contan_gyro[3];
+	static int32_t contan_acc[3];
 	axis3_t gyro_;
 	axis3_t acc_;
-	int32_t contan_gyro[3];
-	int32_t contan_acc[3];
+	int16_t k1 = 0;
+	int16_t k2 = 0;
 
-	for(uint16_t i=0;i<1000;i++){
+	for(int i=0;i<1000;i++){
 		// gyro
 		if(!mpu_read_gyro(&gyro_)){
 			k1++;
@@ -171,7 +172,7 @@ static void get_offset(){
     }
 
     //fail to read mpu
-    if((k1 == 0) && (k2 ==0)){
+    if((k1 == 0) && (k2 == 0)){
     	while(1){
     		HAL_Delay(100);
     		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
@@ -243,12 +244,12 @@ static void rotateV(faxis3_t *vector,faxis3_t delta)
     float coszcosx, sinzcosx, coszsinx, sinzsinx;
 	faxis3_t vec;
 
-    cosx = cosf(delta.x);
-    sinx = sinf(delta.x);
-    cosy = cosf(delta.y);
-    siny = sinf(delta.y);
-    cosz = cosf(delta.z);
-    sinz = sinf(delta.z);
+    cosx = cos_approx(delta.x);
+    sinx = sin_approx(delta.x);
+    cosy = cos_approx(delta.y);
+    siny = sin_approx(delta.y);
+    cosz = cos_approx(delta.z);
+    sinz = sin_approx(delta.z);
 
     coszcosx = cosz * cosx;
     sinzcosx = sinz * cosx;
@@ -274,10 +275,25 @@ static void rotateV(faxis3_t *vector,faxis3_t delta)
 	vector->z =  vec.z;
 
 }
+static float invSqrt_(float x)
+{
+	float halfx = 0.5f * x;
+	float y = x;
+	long i = *(long*)&y;
+	i = 0x5f3759df - (i>>1);
+	y = *(float*)&i;
+	y = y * (1.5f - (halfx * y * y));
+	y = y * (1.5f - (halfx * y * y));
+	return y;
+}
 
 void mpu_update(euler_angle_t *m,uint16_t dt){
     const float gain_cp =0.999f;
-	const float gain_lpf =0.9f;
+	const float f_cut = 100.0f;
+
+	float RC = 1.0f / (2 *M_PIf * f_cut);
+	float gain_lpf =(float)dt*0.000001f / (RC + dt*0.000001f);
+
 	faxis3_t gyro,acc;
 	static faxis3_t accSmooth;
 	axis3_t  acce;
@@ -288,12 +304,11 @@ void mpu_update(euler_angle_t *m,uint16_t dt){
 	rotateV(&vect,gyro);
     mpu_read_acc(&acce);
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
-    length = sqrtf((float)sum);
-    if (length != 0) {
-        acc.x = acce.x/length;
-        acc.y = acce.y/length;
-        acc.z = acce.z/length;
-    }
+    length = invSqrt_((float)sum);
+    acc.x = acce.x*length;
+    acc.y = acce.y*length;
+    acc.z = acce.z*length;
+
 #ifdef ACCSMOOTH
     accSmooth.x = accSmooth.x*gain_lpf + (1-gain_lpf)*acc.x;
 	accSmooth.y = accSmooth.y*gain_lpf + (1-gain_lpf)*acc.y;
@@ -308,9 +323,9 @@ void mpu_update(euler_angle_t *m,uint16_t dt){
     vect.y = vect.y*gain_cp + (1-gain_cp)*accSmooth.y;
     vect.z = vect.z*gain_cp + (1-gain_cp)*accSmooth.z;
 
-	consTrainf(&vect.x,-1,1);
-	consTrainf(&vect.y,-1,1);
-	consTrainf(&vect.z,-1,1);
+    vect.x = constrainf(vect.x,-1.0f,1.0f);
+    vect.y = constrainf(vect.y,-1.0f,1.0f);
+    vect.z = constrainf(vect.z,-1.0f,1.0f);
 
 	/*calculate angles*/
 	m->pitch  = atan2_approx(vect.y,vect.z)*180/M_PIf;
@@ -319,17 +334,6 @@ void mpu_update(euler_angle_t *m,uint16_t dt){
 
 }
 
-static float invSqrt_(float x)
-{
-	float halfx = 0.5f * x;
-	float y = x;
-	long i = *(long*)&y;
-	i = 0x5f3759df - (i>>1);
-	y = *(float*)&i;
-	y = y * (1.5f - (halfx * y * y));
-	y = y * (1.5f - (halfx * y * y));
-	return y;
-}
 /*
 void computeAnglesFromQuaternion(euler_angle_t *m)
 {

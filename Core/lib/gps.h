@@ -5,6 +5,22 @@
 extern "C" {
 #endif
 
+/*
+10hz     B5 62 06 08 06 00 64 00 01 00 01 00 7A 12
+5hz      B5 62 06 08 06 00 C8 00 01 00 01 00 DE 6A
+
+
+
+uart1
+all ubx
+baud 57600
+B5 62 06 00 14 00 01 00 00 00 D0 08 00 00 00 E1 00 00 01 00 01 00 00 00 00 00 D6 8D
+
+
+
+*/
+
+
 #include "stm32f1xx_hal.h"
 
 typedef struct NAV_POSLLH {

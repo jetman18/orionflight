@@ -73,7 +73,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -94,7 +94,7 @@ int main(void)
   MX_I2C2_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-    main_loop();// inti loop
+  main_loop();// inti loop
     // ptotototot
   /* USER CODE END 2 */
 

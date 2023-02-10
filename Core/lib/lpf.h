@@ -5,28 +5,25 @@
 extern "C" {
 #endif
 
-
+#include "timeclock.h"
 #include"maths.h"
 #include"math.h"
 // 1oder
-
-typedef struct{
-    float a;
-    float b;
-}lpf_var;
-
+/*
 static inline float pt1FilterGain(float f_cut, float dT){
     float RC = 1 / (2 * M_PIf * f_cut);
     return dT / (RC + dT);
 }
-
-static inline float pt1FilterApply( float input,float f_cut,float dT)
+*/
+static uint64_t  p_time;
+static uint32_t  delta_time;
+static inline void pt1FilterApply(float *output,float input,float f_cut)
 {
-	static float kk;
+    delta_time = micros() -  p_time;
+    p_time = micros();
 	float RC = 1.0f / (2 *M_PIf * f_cut);
-    float gain_k =(float)dT / (RC + dT);
-    kk = kk + gain_k*(input - kk);
-    return kk;
+    float gain_k =(float)(delta_time*0.0000001) / (RC + (delta_time*0.0000001));
+    *output  = *output  + gain_k*(input - *output );
 }
 
 static inline float pt2FilterGain(float f_cut, float dT)

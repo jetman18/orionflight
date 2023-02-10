@@ -1,0 +1,3 @@
+../Core/lib/gps.c:8:13:calcChecksum	24	static
+../Core/lib/gps.c:17:5:init_gps	4	static
+../Core/lib/gps.c:22:5:processGPS	24	static

@@ -12,12 +12,8 @@
 extern "C" {
 #endif
 
-
-
-#include "gpio.h"
-#include "spi.h"
-#include "i2c.h"
-
+#define MINIMUM_THROTLE  1050
+#define BALAN
 
 #define ENABLE  1
 #define DISABLE 0
