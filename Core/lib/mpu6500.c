@@ -10,8 +10,10 @@
 #include "debug.h"
 #include "axis.h"
 /*hel*/
+const float gain_cp =0.9999f;
+const float f_cut = 200.0f;
 #define LSB_gyr  131.0f
-#define ACCSMOOTH
+//#define ACCSMOOTH
 
 /*
 #define GAIN 0.0005f  //0.0005
@@ -288,9 +290,6 @@ static float invSqrt_(float x)
 }
 
 void mpu_update(euler_angle_t *m,uint16_t dt){
-    const float gain_cp =0.999f;
-	const float f_cut = 100.0f;
-
 	float RC = 1.0f / (2 *M_PIf * f_cut);
 	float gain_lpf =(float)dt*0.000001f / (RC + dt*0.000001f);
 
@@ -302,34 +301,37 @@ void mpu_update(euler_angle_t *m,uint16_t dt){
 
     gyro_read(&gyro,dt);
 	rotateV(&vect,gyro);
+
     mpu_read_acc(&acce);
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
-    length = invSqrt_((float)sum);
-    acc.x = acce.x*length;
-    acc.y = acce.y*length;
-    acc.z = acce.z*length;
+	length = sqrtf((float)(fabs(sum)));
+	if(length == 0){
+		return;
+	}
+
+    acc.x = acce.x/length;
+    acc.y = acce.y/length;
+    acc.z = acce.z/length;
 
 #ifdef ACCSMOOTH
-    accSmooth.x = accSmooth.x*gain_lpf + (1-gain_lpf)*acc.x;
-	accSmooth.y = accSmooth.y*gain_lpf + (1-gain_lpf)*acc.y;
-	accSmooth.z = accSmooth.z*gain_lpf + (1-gain_lpf)*acc.z;
+    accSmooth.x = accSmooth.x*(1-gain_cp) + gain_lpf*acc.x;
+	accSmooth.y = accSmooth.y*(1-gain_cp) + gain_lpf*acc.y;
+	accSmooth.z = accSmooth.z*(1-gain_cp) + gain_lpf*acc.z;
 #else
     accSmooth.x = acc.x;
 	accSmooth.y = acc.y;
 	accSmooth.z = acc.z;
 #endif
+
     /* Apply complimentary filter */
+
     vect.x = vect.x*gain_cp + (1-gain_cp)*accSmooth.x;
     vect.y = vect.y*gain_cp + (1-gain_cp)*accSmooth.y;
     vect.z = vect.z*gain_cp + (1-gain_cp)*accSmooth.z;
 
-    vect.x = constrainf(vect.x,-1.0f,1.0f);
-    vect.y = constrainf(vect.y,-1.0f,1.0f);
-    vect.z = constrainf(vect.z,-1.0f,1.0f);
-
 	/*calculate angles*/
 	m->pitch  = atan2_approx(vect.y,vect.z)*180/M_PIf;
-    m->roll   = atan2_approx(-vect.x, sqrtf(vect.y * vect.y + vect.z * vect.z))*180/M_PIf;
+    m->roll   = atan2_approx(-vect.x, sqrtf(fabs(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
     m->yaw    = gyro.z;
 
 }

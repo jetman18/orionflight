@@ -39,6 +39,12 @@ void writeOneshot125(uint32_t Channel,int16_t dulty)
 	  dulty = constrain(dulty,120,250);
 	__HAL_TIM_SetCompare (htimm,Channel,dulty);
 }
+void motoIdle(){
+	__HAL_TIM_SetCompare (htimm,ch1,1000);
+	__HAL_TIM_SetCompare (htimm,ch2,1000);
+	__HAL_TIM_SetCompare (htimm,ch3,1000);
+	__HAL_TIM_SetCompare (htimm,ch4,1000);
+}
 
 
 

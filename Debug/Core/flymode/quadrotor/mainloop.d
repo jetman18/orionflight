@@ -43,7 +43,9 @@ Core/flymode/quadrotor/mainloop.o: ../Core/flymode/quadrotor/mainloop.c \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/lpf.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/bmp280.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ibus.h \
- ../Core/flymode/quadrotor/config.h
+ ../Core/flymode/quadrotor/config.h \
+ c:\users\sudo\documents\github\orionflight\core\lib\ssd1306\ssd1306.h \
+ c:\users\sudo\documents\github\orionflight\core\lib\ssd1306\fonts.h
 ../Core/flymode/quadrotor/mainloop.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/mpu6500.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
@@ -92,3 +94,5 @@ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/lpf.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/bmp280.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/ibus.h:
 ../Core/flymode/quadrotor/config.h:
+c:\users\sudo\documents\github\orionflight\core\lib\ssd1306\ssd1306.h:
+c:\users\sudo\documents\github\orionflight\core\lib\ssd1306\fonts.h:

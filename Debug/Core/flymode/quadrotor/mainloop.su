@@ -1,3 +1,4 @@
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:28:6:looptime	32	static
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h:36:5:fequency_division	16	static
-../Core/flymode/quadrotor/mainloop.c:34:6:main_loop	32	static
+../Core/flymode/quadrotor/mainloop.c:38:6:main_loop	8	static
+../Core/flymode/quadrotor/mainloop.c:182:6:screen_dpl	16	static

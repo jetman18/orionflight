@@ -17,33 +17,87 @@
 #include "ibus.h"
 #include "config.h"
 #include <string.h>
+#include "./ssd1306/ssd1306.h"
 /******************************************/
-float 	Ch1,Ch2,Ch4,Ch5,Ch6;
+static float 	Ch1,Ch2,Ch4;
 uint16_t throttle;
-
 pid__t pitch_t,roll_t,yaw_t;
-uint16_t moto1,moto2,moto3,moto4;
-
+int16_t moto1,moto2,moto3,moto4;
+int16_t plfmt1,plfmt2,plfmt3,plfmt4;
 euler_angle_t mpu;
 MAG_t t;
-
-//bmp280
 BMP280_HandleTypedef bmp280;
 float temperature,pressure,altitude;
-int k,k1;
+
+uint32_t k1,k2;
+extern int16_t calib_axi[3];
+extern int16_t max_val[3];
+extern int16_t min_val[3];
+static void screen_dpl();
+
 void main_loop(){
 	initTimeloop(&htim4);
 	ibusInit(&huart1);
 	MPU_spi_init(&hspi1,GPIOA,GPIO_PIN_4);
+
+	initPWM(&htim2);
+	motoIdle();
+
+	ssd1306_Init(&hi2c2);
+	ssd1306_Fill(Black);
+	ssd1306_SetCursor(10,0);
+	ssd1306_WriteString("Calibrating ...",Font_7x10,White);
+	ssd1306_UpdateScreen(&hi2c2);
+
 	//qmc5883_init(&hi2c2);
 	//magnet_sensor_calibrate();
+	//screen_dpl();
 
-	/*
 	//bmp280 sensor
 	bmp280_init_default_params(&bmp280.params);
     bmp280.addr = BMP280_I2C_ADDRESS_0;
+    bmp280.i2c = &hi2c2;
 	bmp280_init(&bmp280,&bmp280.params);
-	*/
+
+	ssd1306_Fill(Black);
+	while(1){
+
+		bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
+		/*
+		ssd1306_Fill(Black);
+		ssd1306_SetCursor(10,0);
+		ssd1306_Write_fval(altitude,Font_7x10,White,2);
+		ssd1306_SetCursor(10,10);
+	    ssd1306_Write_fval(pressure,Font_7x10,White,2);
+		ssd1306_UpdateScreen(&hi2c2);
+		ssd1306_SetCursor(10,20);
+	    ssd1306_Write_fval(temperature,Font_7x10,White,2);
+	    ssd1306_UpdateScreen(&hi2c2);
+		HAL_Delay(10);
+
+		/*
+		bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
+
+
+		ssd1306_SetCursor(10,5);
+		ssd1306_Write_val(t.mx,Font_7x10,White);
+		ssd1306_SetCursor(60,5);
+		ssd1306_Write_val((int)pitch,Font_7x10,White);
+
+		ssd1306_SetCursor(10,15);
+	    ssd1306_Write_val(t.my,Font_7x10,White);
+		ssd1306_SetCursor(60,15);
+		ssd1306_Write_val((int)roll,Font_7x10,White);
+
+		ssd1306_SetCursor(10,25);
+		ssd1306_Write_val(t.mz,Font_7x10,White);
+		*/
+		//ssd1306_SetCursor(60,25);
+		//ssd1306_Write_val(max_val[2]- calib_axi[2],Font_7x10,White);
+
+
+	}
+
 
 	memset(&pitch_t, 0, sizeof(pid__t));
     memset(&roll_t, 0, sizeof(pid__t));
@@ -51,50 +105,30 @@ void main_loop(){
 
     const float ch1_gain = 0.11f;
     const float ch2_gain = 0.11f;
-    const float ch4_gain =0.000005;
-#ifdef BALAN
-	initPWM(&htim2);
-	const uint16_t dttime = 1000;
-	/*  PID 250HZ
-	 *  KP = 3.2
-	 *  KI = 0.6
-	 *  KD = 1.0
-	 */
+    const float ch4_gain =0.000005f;
+
+	const uint16_t dttime = 1000;  //1khz loop
 
 	/*init pid gain*/
-	pitch_t.kp =3.0f;   //3.3f
-	pitch_t.ki =0.00002f;
-	pitch_t.kd =0.7f;  //1.0f
+	pitch_t.kp =4.3f;   //3.3f
+	pitch_t.ki =4.7f;
+	pitch_t.kd =1.5;//1.7f;  //1.0f
 
 	roll_t.kp = pitch_t.kp;
 	roll_t.ki = pitch_t.ki;
 	roll_t.kd = pitch_t.kd;
 
 	yaw_t.kp = 120000;//1000;
-	yaw_t.ki = 20;//400;
+	yaw_t.ki = 10000;
 	yaw_t.kd = 0;
-
-#else
-	initOneshot125(&htim2);
-	const uint16_t dttime = 500;
-	/*init pid gain*/
-	pitch_t.kp =250;//400;   //3.3f
-	pitch_t.ki =1100;//30.0f;  //0.6
-	pitch_t.kd =0;  //1.0f
-
-	roll_t.kp = pitch_t.kp;
-	roll_t.ki = pitch_t.ki;
-	roll_t.kd = pitch_t.kd;
-
-	yaw_t.kp = 230;//1000;
-	yaw_t.ki = 1050;//500;
-	yaw_t.kd = 0; //0
-
-	ch1_gain =0.003f;
-	ch2_gain =0.003f;
-	ch4_gain =0.003f;
-#endif
+  //throttle > MINIMUM_THROTLE
+	while(throttle > MINIMUM_THROTLE){
+		HAL_Delay(100);
+	    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+	}
 while(1){
+
+
     if(ibusFrameComplete()){
 		Ch1=ibusReadf(CH1,ch1_gain);
 		Ch2=ibusReadf(CH2,ch2_gain);
@@ -102,76 +136,117 @@ while(1){
 		Ch4=ibusReadf(CH4,ch4_gain);
     }
 
-#ifdef BALAN
-	       mpu_update(&mpu,dttime);
-	       //bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
-	       //qmc_get_values(&t,0,0);
-#else
-    	   MPU_update_acro(&mpu,dttime);
-#endif
+	   mpu_update(&mpu,dttime);
 
-    	   //print_float(Ch2);
-    	   //print_int(mpu.roll);
-    	   //print_char("\n");
+	   //bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
 
-#ifdef BALAN
-    	  FEQUENCY_DIV(2,ENABLE){
-#else
-          if(1){
-#endif
+	   /*pid update 500hz*/
+	   FEQUENCY_DIV(2,ENABLE){
+		if(throttle>MINIMUM_THROTLE){
+			// pid calculate
 
-        	if(throttle>MINIMUM_THROTLE){
-                // pid calculate
-        		pidCalculate(&pitch_t,mpu.pitch,Ch2,100);//Ch2
-    			pidCalculate(&roll_t ,mpu.roll ,Ch1,100);//Ch1
-    			pidCalculate(&yaw_t  ,mpu.yaw  ,Ch4,100);//Ch4
+			pidCalculate(&pitch_t,mpu.pitch,Ch2,70);//Ch2
+			pidCalculate(&roll_t ,mpu.roll ,Ch1,70);//Ch1
+			pidCalculate(&yaw_t  ,mpu.yaw  ,Ch4,60);//Ch4
 
-    			moto1 = throttle + (-pitch_t.PID - roll_t.PID - yaw_t.PID);
-    			moto2 = throttle + (-pitch_t.PID + roll_t.PID + yaw_t.PID);
-    			moto3 = throttle + ( pitch_t.PID + roll_t.PID - yaw_t.PID);
-    			moto4 = throttle + ( pitch_t.PID - roll_t.PID + yaw_t.PID);
+			moto1 = throttle + (-pitch_t.PID - roll_t.PID - yaw_t.PID);
+			moto2 = throttle + (-pitch_t.PID + roll_t.PID + yaw_t.PID);
+			moto3 = throttle + ( pitch_t.PID + roll_t.PID - yaw_t.PID);
+			moto4 = throttle + ( pitch_t.PID - roll_t.PID + yaw_t.PID);
 
-        	   }
-        	else {
-        		   pitch_t.I=0.0f;
-        		   roll_t.I =0.0f;
-        		   yaw_t.I  =0.0f;
+		}
+		else {
+			   pitch_t.I=0.0f;
+			   roll_t.I =0.0f;
+			   yaw_t.I  =0.0f;
 
-        		   moto1 = 1000;
-        		   moto2 = 1000;
-        		   moto3 = 1000;
-        		   moto4 = 1000;
-
-        	   }
-
-            	// update throttle to esc
-    #ifdef BALAN
-        		writePwm(ch1,moto1);
-        		writePwm(ch2,moto2);
-        		writePwm(ch3,moto3);
-        		writePwm(ch4,moto4);
-    #else
-        		moto1 = (240.0f/2000)*moto1;
-        		moto2 = (240.0f/2000)*moto2;
-        		moto3 = (240.0f/2000)*moto3;
-        		moto4 = (240.0f/2000)*moto4;
-
-        		writeOneshot125(ch1,moto1);
-        		writeOneshot125(ch2,moto2);
-        		writeOneshot125(ch3,moto3);
-        		writeOneshot125(ch4,moto4);
-    #endif
-    		}
-
-        FEQUENCY_DIV(500,ENABLE){
-    	     HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
-         }
-
+			   moto1 = 1000;
+			   moto2 = 1000;
+			   moto3 = 1000;
+			   moto4 = 1000;
+		   }
+			//update throttle to esc
+			writePwm(ch1,moto1);
+			writePwm(ch2,moto2);
+			writePwm(ch3,moto3);
+			writePwm(ch4,moto4);
+		}
+     /*blink led 13*/
+	 FEQUENCY_DIV(500,ENABLE){
+		 HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+	 }
      /*loop feq */
     looptime(dttime);
    }
 }
+void screen_dpl(){
+	/*ssd1306*/  //128*64
 
+		ssd1306_Fill(Black);
+
+		ssd1306_SetCursor(10,0);
+		ssd1306_Write_val(max_val[0] - calib_axi[0],Font_7x10,White);
+		ssd1306_SetCursor(80,0);
+		ssd1306_Write_val(min_val[0] - calib_axi[0],Font_7x10,White);
+
+	    ssd1306_SetCursor(10,15);
+	    ssd1306_Write_val(max_val[1] - calib_axi[1],Font_7x10,White);
+	    ssd1306_SetCursor(80,15);
+	    ssd1306_Write_val(min_val[1] - calib_axi[1],Font_7x10,White);
+
+	    ssd1306_SetCursor(10,30);
+	    ssd1306_Write_val(max_val[2],Font_7x10,White);
+	    ssd1306_SetCursor(80,30);
+	    ssd1306_Write_val(min_val[2],Font_7x10,White);
+
+	    ssd1306_SetCursor(20,45);
+	    ssd1306_WriteString("max",Font_11x18,White);
+
+	    ssd1306_SetCursor(70,45);
+	    ssd1306_WriteString("min",Font_11x18,White);
+
+	    ssd1306_UpdateScreen(&hi2c2);
+	    HAL_Delay(5000);
+		while(1){
+			static int count =0;
+			count ++;
+			if(count>12){
+				//HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+				//HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_12);
+				count =0;
+			}
+
+			float pitch;
+		    float roll;
+		        if(ibusFrameComplete()){
+				   pitch =ibusReadf(CH5,0.2);
+				   roll = ibusReadf(CH6,0.2);
+		        }
+
+			qmc_get_values(&t,pitch,roll);
+
+			ssd1306_Fill(Black);
+
+			ssd1306_SetCursor(10,5);
+			ssd1306_Write_val(t.mx,Font_7x10,White);
+			ssd1306_SetCursor(60,5);
+			ssd1306_Write_val((int)pitch,Font_7x10,White);
+
+			ssd1306_SetCursor(10,15);
+		    ssd1306_Write_val(t.my,Font_7x10,White);
+			ssd1306_SetCursor(60,15);
+			ssd1306_Write_val((int)roll,Font_7x10,White);
+
+			ssd1306_SetCursor(10,25);
+			ssd1306_Write_val(t.mz,Font_7x10,White);
+			//ssd1306_SetCursor(60,25);
+			//ssd1306_Write_val(max_val[2]- calib_axi[2],Font_7x10,White);
+
+			ssd1306_UpdateScreen(&hi2c2);
+
+		}
+
+}
 
 
 

@@ -5,7 +5,7 @@
  *      Author: sudo
  */
 
-#include <bmp280.h>
+#include "bmp280.h"
 #include "math.h"
 #include "timeclock.h"
 /**
@@ -181,8 +181,7 @@ bool bmp280_is_measuring(BMP280_HandleTypedef *dev) {
  *
  * Return value is in degrees Celsius.
  */
-static inline int32_t compensate_temperature(BMP280_HandleTypedef *dev, int32_t adc_temp,
-		int32_t *fine_temp) {
+static inline int32_t compensate_temperature(BMP280_HandleTypedef *dev, int32_t adc_temp, int32_t *fine_temp) {
 	int32_t var1, var2;
 
 	var1 = ((((adc_temp >> 3) - ((int32_t) dev->dig_T1 << 1)))
@@ -221,7 +220,7 @@ static inline uint32_t compensate_pressure(BMP280_HandleTypedef *dev, int32_t ad
 	var2 = ((int64_t) dev->dig_P8 * p) >> 19;
 
 	p = ((p + var1 + var2) >> 8) + ((int64_t) dev->dig_P7 << 4);
-	return p;
+	return p/256;
 }
 
 bool bmp280_read_fixed(BMP280_HandleTypedef *dev, float *temp,float *press,float *altitude) {
@@ -230,7 +229,8 @@ bool bmp280_read_fixed(BMP280_HandleTypedef *dev, float *temp,float *press,float
 	static int32_t fine_temp;
 	static int bmp_count=0;
 	static int32_t temperature;
-	static uint32_t pressure;
+	static int32_t pressure;
+	static float altit=0;
 	uint8_t data[3];
 	if(bmp_count == 0){
 		if (read_data(dev, 0xf7, data,3)) {
@@ -261,14 +261,38 @@ bool bmp280_read_fixed(BMP280_HandleTypedef *dev, float *temp,float *press,float
 		 return true;
 	}
 	if(bmp_count == 4){
-		*press = (float)pressure/256;
+		*press = (float)pressure;
 		*temp  = (float)temperature/100;
-		*altitude =(44330 * (1.0 - powf((float)pressure / (101325*256), 0.1903)))*100.0f;
+		*altitude =((44330 * (1.0 - powf((float)pressure/(101325*100), 0.1903))) - 25842.0f)*100;
+
 		 bmp_count = 0;
 		 return true;
 	}
 
 	return true;
 }
+/*
+bool bmp280_read_fixed(BMP280_HandleTypedef *dev, float *temp,float *press,float *altitude) {
+	int32_t adc_pressure;
+	int32_t adc_temp;
+	int32_t fine_temp;
+	int32_t temperature;
+	int32_t pressure;
+	uint8_t data[3];
 
+	    read_data(dev, 0xf7, data,3);
+	    adc_pressure = data[0] << 12 | data[1] << 4 | data[2] >> 4;
+		read_data(dev, 0xfA, data,3);
+		adc_temp = data[0] << 12 | data[1] << 4 | data[2] >> 4;
+
+		 temperature = compensate_temperature(dev, adc_temp, &fine_temp);
+
+		 pressure = compensate_pressure(dev, adc_pressure, fine_temp);
+
+		*press = (float)pressure;
+		*temp  = (float)temperature/100;
+		*altitude =(44330 * (1.0 - powf((float)pressure/(101325*100), 0.1903)));
+return 0;
+}
+*/
 

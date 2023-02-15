@@ -100,16 +100,41 @@ void ssd1306_Fill(SSD1306_COLOR color)
 //
 //  Write the screenbuffer with changed to the screen
 //
+/*
+void ssd1306_UpdateScreen(I2C_HandleTypeDef *hi2c)
+{
+    static uint8_t state=1;
+    static uint8_t i=0;
+    static uint8_t ii=0;
+    if(state){
+        ssd1306_WriteCommand(hi2c, 0xB0 + i);
+        ssd1306_WriteCommand(hi2c, 0x00);
+        ssd1306_WriteCommand(hi2c, 0x10);
+        state =0 ;
+    }
+    HAL_I2C_Mem_Write(hi2c, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[ii],1,10);
+    ii++;
+    if(ii>127){
+        ii=0;
+        i++;
+        if(i>7)i=0;
+        state =1;
+       // ssd1306_Fill(White);
+       // ssd1306_UpdateScreenn(hi2c);
+    }
+   // else if(ii>1024)ii=0;
+}
+*/
 void ssd1306_UpdateScreen(I2C_HandleTypeDef *hi2c)
 {
     uint8_t i;
 
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i <8; i++) {
         ssd1306_WriteCommand(hi2c, 0xB0 + i);
         ssd1306_WriteCommand(hi2c, 0x00);
         ssd1306_WriteCommand(hi2c, 0x10);
 
-        HAL_I2C_Mem_Write(hi2c, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH, 100);
+        HAL_I2C_Mem_Write(hi2c, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH, 1000);
     }
 }
 
@@ -233,7 +258,7 @@ static void ftoa(float n, char *res, int afterpoint)
 {
     int ipart = (int)n;
     float fpart = n - (float)ipart;
-    int i = intToStr(ipart, res, 0);
+    int i = intToStr(ipart, res,1);
     if (afterpoint != 0) {
         res[i] = '.'; 
         fpart = fpart * pow(10, afterpoint);
@@ -262,8 +287,72 @@ char ssd1306_WriteString(char* str, FontDef Font, SSD1306_COLOR color)
     // Everything ok
     return *str;
 }
-void ssd1306_Write_fval(float val, FontDef Font, SSD1306_COLOR color,int afterpoint)
-{   char string[10];
-    ftoa(val,string,afterpoint);
-    ssd1306_WriteString(string,Font,color);
+
+void ssd1306_Write_fval(float n, FontDef Font, SSD1306_COLOR color,int afftezero)
+{
+    float nn=n;
+    n=fabs(n);
+    int afterpoint=afftezero+1;
+    char res[20];
+    memset(res,0,sizeof(res));
+    int ipart = (int)n;
+    float fpart = n - (float)ipart;
+    int i = intToStr(ipart, res,1);
+
+    if(fpart!=0.0){
+          if (afterpoint != 0) {
+              res[i] = '.';
+              fpart = fpart * pow(10, afterpoint);
+
+              int ii=intToStr((int)fpart, res + i + 1,afterpoint);
+              if(nn<0.0f){
+                 for(int l=ii+i+1;l>=0;l--){
+                  res[l+1]=res[l];
+                 }
+                 res[0]='-';
+                 i++;
+              }
+              ssd1306_WriteString(res,Font,color);
+          }
+       }
+    else {
+      if(nn<0.0f){
+         for(int l=i+1;l>=0;l--)res[l+1]=res[l];
+         res[0]='-';
+         i++;
+        }
+      ssd1306_WriteString(res,Font,color);
+    }
+}
+
+void ssd1306_Write_val(int x, FontDef Font, SSD1306_COLOR color)
+{
+	if(x==0){
+		ssd1306_WriteString("0",Font,color);
+		return;
+	}
+	char str[10];
+    memset(str,0,10);
+    int m=x;
+    x=abs(x);
+    int i = 0;
+    while (x) {
+        str[i++] = (x % 10) + '0';
+        x = x / 10;
+    }
+    if(m<0){
+       int y=i;
+       while (i < y+1)
+           str[i++] = '-';
+     }
+
+    int k = 0, j = i - 1, temp;
+    while (k < j) {
+        temp = str[k];
+        str[k] = str[j];
+        str[j] = temp;
+        k++;
+        j--;
+    }
+    ssd1306_WriteString(str,Font,color);
 }
