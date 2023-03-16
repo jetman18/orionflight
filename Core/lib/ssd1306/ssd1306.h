@@ -55,16 +55,19 @@ typedef struct {
 //
 //  Function definitions
 //
-
+void ssd1306_Line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, SSD1306_COLOR color);
 uint8_t ssd1306_Init(I2C_HandleTypeDef *hi2c);
 void ssd1306_UpdateScreen(I2C_HandleTypeDef *hi2c);
+void ssd1306_UpdateScreen2(I2C_HandleTypeDef *hi2c);
 void ssd1306_Fill(SSD1306_COLOR color);
 void ssd1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color);
 char ssd1306_WriteChar(char ch, FontDef Font, SSD1306_COLOR color);
-void ssd1306_Write_fval(float x, FontDef Font, SSD1306_COLOR color,int afftezero);
+void ssd1306_Write_fval(double x, FontDef Font, SSD1306_COLOR color,int afftezero);
 char ssd1306_WriteString(char* str, FontDef Font, SSD1306_COLOR color);
 void ssd1306_SetCursor(uint8_t x, uint8_t y);
 void ssd1306_InvertColors(void);
 void ssd1306_Write_val(int x, FontDef Font, SSD1306_COLOR color);
+void ssd1306_Fill_row(SSD1306_COLOR color,uint8_t row,uint8_t start,uint8_t deep,uint8_t len);
+uint8_t isReady();
 
 #endif  // _SSD1306_H

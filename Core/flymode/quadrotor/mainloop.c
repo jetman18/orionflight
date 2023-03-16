@@ -17,153 +17,105 @@
 #include "ibus.h"
 #include "config.h"
 #include <string.h>
+#include "gps.h"
 #include "./ssd1306/ssd1306.h"
 /******************************************/
-static float 	Ch1,Ch2,Ch4;
-uint16_t throttle;
+const float ch1_gain = 0.11f;
+const float ch2_gain = 0.11f;
+const float ch4_gain =0.000005f;
+static const uint16_t dttime = 1000U;
+faxis3_t t;
+static float  Ch1,Ch2,Ch4;
+static uint16_t throttle;
 pid__t pitch_t,roll_t,yaw_t;
-int16_t moto1,moto2,moto3,moto4;
-int16_t plfmt1,plfmt2,plfmt3,plfmt4;
-euler_angle_t mpu;
-MAG_t t;
+static uint16_t moto1,moto2,moto3,moto4;
+static euler_angle_t mpu;
 BMP280_HandleTypedef bmp280;
-float temperature,pressure,altitude;
-
-uint32_t k1,k2;
-extern int16_t calib_axi[3];
-extern int16_t max_val[3];
-extern int16_t min_val[3];
+static float temperature,pressure,altitude;
 static void screen_dpl();
+static void bipbip(int bip);
 
 void main_loop(){
 	initTimeloop(&htim4);
-	ibusInit(&huart1);
+	debugInit(&huart1,&hi2c1);
+	/*--ibus--*/
+	ibusInit(&huart1,115200);
+	/*--MPU--*/
 	MPU_spi_init(&hspi1,GPIOA,GPIO_PIN_4);
-
+	/*--GPS--*/
+	gpsInit(&huart3,57600);
+    /*--pwm-out--*/
 	initPWM(&htim2);
 	motoIdle();
 
-	ssd1306_Init(&hi2c2);
-	ssd1306_Fill(Black);
-	ssd1306_SetCursor(10,0);
-	ssd1306_WriteString("Calibrating ...",Font_7x10,White);
-	ssd1306_UpdateScreen(&hi2c2);
-
-	//qmc5883_init(&hi2c2);
-	//magnet_sensor_calibrate();
-	//screen_dpl();
-
 	//bmp280 sensor
-	bmp280_init_default_params(&bmp280.params);
-    bmp280.addr = BMP280_I2C_ADDRESS_0;
-    bmp280.i2c = &hi2c2;
-	bmp280_init(&bmp280,&bmp280.params);
+	//bipbip(4);
+	//bmp280_init_default_params(&bmp280.params);
+    //bmp280.addr = BMP280_I2C_ADDRESS_0;
+    //bmp280.i2c = &hi2c1;
+	//bmp280_init(&bmp280,&bmp280.params);
 
-	ssd1306_Fill(Black);
-	while(1){
-
-		bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
-		/*
-		ssd1306_Fill(Black);
-		ssd1306_SetCursor(10,0);
-		ssd1306_Write_fval(altitude,Font_7x10,White,2);
-		ssd1306_SetCursor(10,10);
-	    ssd1306_Write_fval(pressure,Font_7x10,White,2);
-		ssd1306_UpdateScreen(&hi2c2);
-		ssd1306_SetCursor(10,20);
-	    ssd1306_Write_fval(temperature,Font_7x10,White,2);
-	    ssd1306_UpdateScreen(&hi2c2);
-		HAL_Delay(10);
-
-		/*
-		bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
-
-
-		ssd1306_SetCursor(10,5);
-		ssd1306_Write_val(t.mx,Font_7x10,White);
-		ssd1306_SetCursor(60,5);
-		ssd1306_Write_val((int)pitch,Font_7x10,White);
-
-		ssd1306_SetCursor(10,15);
-	    ssd1306_Write_val(t.my,Font_7x10,White);
-		ssd1306_SetCursor(60,15);
-		ssd1306_Write_val((int)roll,Font_7x10,White);
-
-		ssd1306_SetCursor(10,25);
-		ssd1306_Write_val(t.mz,Font_7x10,White);
-		*/
-		//ssd1306_SetCursor(60,25);
-		//ssd1306_Write_val(max_val[2]- calib_axi[2],Font_7x10,White);
-
-
-	}
-
-
-	memset(&pitch_t, 0, sizeof(pid__t));
-    memset(&roll_t, 0, sizeof(pid__t));
-    memset(&yaw_t, 0, sizeof(pid__t));
-
-    const float ch1_gain = 0.11f;
-    const float ch2_gain = 0.11f;
-    const float ch4_gain =0.000005f;
-
-	const uint16_t dttime = 1000;  //1khz loop
+	qmc5883_init(&hi2c1);
+	screen_dpl();
 
 	/*init pid gain*/
-	pitch_t.kp =4.3f;   //3.3f
+	pitch_t.kp =4.3f;   
 	pitch_t.ki =4.7f;
-	pitch_t.kd =1.5;//1.7f;  //1.0f
+	pitch_t.kd =1.5f;
 
 	roll_t.kp = pitch_t.kp;
 	roll_t.ki = pitch_t.ki;
 	roll_t.kd = pitch_t.kd;
 
-	yaw_t.kp = 120000;//1000;
+	yaw_t.kp = 120000;
 	yaw_t.ki = 10000;
 	yaw_t.kd = 0;
-  //throttle > MINIMUM_THROTLE
-	while(throttle > MINIMUM_THROTLE){
-		HAL_Delay(100);
-	    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	}
+
 while(1){
-
-
+    static int start_ = 0;
     if(ibusFrameComplete()){
 		Ch1=ibusReadf(CH1,ch1_gain);
 		Ch2=ibusReadf(CH2,ch2_gain);
 		throttle=ibusReadRawRC(CH3);
 		Ch4=ibusReadf(CH4,ch4_gain);
+		if(!start_){
+			if(ibusReadRawRC(CH3)<1100 &&  ibusReadRawRC(CH4)<1100 &&
+			   ibusReadRawRC(CH2)>1900 &&  ibusReadRawRC(CH1)<1100){
+               start_ =1;
+               bipbip(3);
+		    }
+        }
     }
-
 	   mpu_update(&mpu,dttime);
-
 	   //bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
 
-	   /*pid update 500hz*/
+	   /*pid rate 500hz*/
 	   FEQUENCY_DIV(2,ENABLE){
-		if(throttle>MINIMUM_THROTLE){
+		if( start_ && throttle>1030){
 			// pid calculate
+			float Pitch = mpu.pitch/10.0f;
+			float Roll = mpu.roll/10.0f;
+			float Yaw = mpu.yaw/10.0f;
+			pidCalculate(&pitch_t,Pitch,Ch2,2000,70);//Ch2
+			pidCalculate(&roll_t ,Roll,Ch1,2000,70);//Ch1
+			pidCalculate(&yaw_t  ,Yaw,Ch4,2000,0);//Ch4
 
-			pidCalculate(&pitch_t,mpu.pitch,Ch2,70);//Ch2
-			pidCalculate(&roll_t ,mpu.roll ,Ch1,70);//Ch1
-			pidCalculate(&yaw_t  ,mpu.yaw  ,Ch4,60);//Ch4
-
-			moto1 = throttle + (-pitch_t.PID - roll_t.PID - yaw_t.PID);
-			moto2 = throttle + (-pitch_t.PID + roll_t.PID + yaw_t.PID);
-			moto3 = throttle + ( pitch_t.PID + roll_t.PID - yaw_t.PID);
-			moto4 = throttle + ( pitch_t.PID - roll_t.PID + yaw_t.PID);
+			moto1 = throttle - pitch_t.PID - roll_t.PID - yaw_t.PID;
+			moto2 = throttle - pitch_t.PID + roll_t.PID + yaw_t.PID;
+			moto3 = throttle + pitch_t.PID + roll_t.PID - yaw_t.PID;
+			moto4 = throttle + pitch_t.PID - roll_t.PID + yaw_t.PID;
 
 		}
-		else {
-			   pitch_t.I=0.0f;
-			   roll_t.I =0.0f;
-			   yaw_t.I  =0.0f;
+		else{
+			//reset I
+			pitch_t.I=0.0f;
+			roll_t.I =0.0f;
+			yaw_t.I  =0.0f;
 
-			   moto1 = 1000;
-			   moto2 = 1000;
-			   moto3 = 1000;
-			   moto4 = 1000;
+			moto1 = 1000;
+			moto2 = 1000;
+			moto3 = 1000;
+			moto4 = 1000;
 		   }
 			//update throttle to esc
 			writePwm(ch1,moto1);
@@ -172,81 +124,159 @@ while(1){
 			writePwm(ch4,moto4);
 		}
      /*blink led 13*/
+	 /*
 	 FEQUENCY_DIV(500,ENABLE){
 		 HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
 	 }
-     /*loop feq */
+	 */
     looptime(dttime);
    }
 }
-void screen_dpl(){
-	/*ssd1306*/  //128*64
 
-		ssd1306_Fill(Black);
+static void screen_dpl(){
 
-		ssd1306_SetCursor(10,0);
-		ssd1306_Write_val(max_val[0] - calib_axi[0],Font_7x10,White);
-		ssd1306_SetCursor(80,0);
-		ssd1306_Write_val(min_val[0] - calib_axi[0],Font_7x10,White);
-
-	    ssd1306_SetCursor(10,15);
-	    ssd1306_Write_val(max_val[1] - calib_axi[1],Font_7x10,White);
-	    ssd1306_SetCursor(80,15);
-	    ssd1306_Write_val(min_val[1] - calib_axi[1],Font_7x10,White);
-
-	    ssd1306_SetCursor(10,30);
-	    ssd1306_Write_val(max_val[2],Font_7x10,White);
-	    ssd1306_SetCursor(80,30);
-	    ssd1306_Write_val(min_val[2],Font_7x10,White);
-
-	    ssd1306_SetCursor(20,45);
-	    ssd1306_WriteString("max",Font_11x18,White);
-
-	    ssd1306_SetCursor(70,45);
-	    ssd1306_WriteString("min",Font_11x18,White);
-
-	    ssd1306_UpdateScreen(&hi2c2);
-	    HAL_Delay(5000);
 		while(1){
-			static int count =0;
-			count ++;
-			if(count>12){
-				//HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
-				//HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_12);
-				count =0;
+            /*
+            static int8_t t = 0;
+            int8_t fix = gpsGetdata().fix;
+			uint8_t numsat = gpsGetdata().numSat;
+			float longitude = gpsGetdata().coord[LON];
+			float latitude =  gpsGetdata().coord[LAT];
+
+			if(fix != 0 && t == 0){
+				bipbip(4);
+				t=1;
 			}
-
-			float pitch;
-		    float roll;
-		        if(ibusFrameComplete()){
-				   pitch =ibusReadf(CH5,0.2);
-				   roll = ibusReadf(CH6,0.2);
-		        }
-
-			qmc_get_values(&t,pitch,roll);
 
 			ssd1306_Fill(Black);
 
-			ssd1306_SetCursor(10,5);
-			ssd1306_Write_val(t.mx,Font_7x10,White);
-			ssd1306_SetCursor(60,5);
-			ssd1306_Write_val((int)pitch,Font_7x10,White);
 
-			ssd1306_SetCursor(10,15);
-		    ssd1306_Write_val(t.my,Font_7x10,White);
-			ssd1306_SetCursor(60,15);
-			ssd1306_Write_val((int)roll,Font_7x10,White);
+			ssd1306_Line(63,2,63,36,White);
+			ssd1306_Line(0,36,128,36,White);
 
-			ssd1306_SetCursor(10,25);
-			ssd1306_Write_val(t.mz,Font_7x10,White);
-			//ssd1306_SetCursor(60,25);
-			//ssd1306_Write_val(max_val[2]- calib_axi[2],Font_7x10,White);
+			ssd1306_SetCursor(2,0);
+			ssd1306_WriteString("Ms:",Font_7x10,White);
+			ssd1306_SetCursor(34,0);
+			ssd1306_Write_val(gpsGetdata().coord_update_time,Font_7x10,White);
 
-			ssd1306_UpdateScreen(&hi2c2);
+			ssd1306_SetCursor(85,2);
+			ssd1306_WriteString("m/s",Font_7x10,White);
+			ssd1306_SetCursor(80,14);
+			ssd1306_Write_fval(gpsGetdata().speed/100,Font_11x18,White,1);
+
+		    ssd1306_SetCursor(2,12);
+			ssd1306_WriteString("Sat:",Font_7x10,White);
+			ssd1306_SetCursor(34,12);
+			ssd1306_Write_val(numsat,Font_7x10,White);
+
+			ssd1306_SetCursor(2,25);
+			ssd1306_WriteString("Fix:",Font_7x10,White);
+			ssd1306_SetCursor(34,25);
+			ssd1306_Write_val(fix,Font_7x10,White);
+
+		    ssd1306_SetCursor(2,41);
+			ssd1306_WriteString("Lon:",Font_7x10,White);
+			ssd1306_SetCursor(34,41);
+			ssd1306_Write_fval(longitude,Font_7x10,White,6);
+
+		    ssd1306_SetCursor(2,53);
+			ssd1306_WriteString("Lat:",Font_7x10,White);
+			ssd1306_SetCursor(34,53);
+			ssd1306_Write_fval(latitude,Font_7x10,White,6);
+
+
+
+
+		    ssd1306_Fill(Black);
+		    static float all;
+		    bmp280_read_fixed(&bmp280, &temperature, &pressure,&altitude);
+            all = all*0.7f + 0.3f*altitude;
+			ssd1306_SetCursor(5,5);
+			ssd1306_WriteString("t:",Font_7x10,White);
+			ssd1306_SetCursor(30,5);
+			ssd1306_Write_fval(temperature,Font_7x10,White,2);
+
+		    ssd1306_SetCursor(5,18);
+			ssd1306_WriteString("H:",Font_7x10,White);
+			ssd1306_SetCursor(30,18);
+			ssd1306_Write_val(all,Font_7x10,White);
+
+		    ssd1306_SetCursor(5,28);
+			ssd1306_WriteString("P:",Font_7x10,White);
+			ssd1306_SetCursor(30,28);
+			ssd1306_Write_val(pressure,Font_7x10,White);
+ qmc_get_3axil_values(&t);
+*/          static MAG_t t;
+			//get_AccAngle(&mpu);
+			qmc_get_raw(&t);
+		    //qmc_get_values(&t,mpu.pitch,mpu.roll);
+		    print_int(t.mx);
+		    print_char(" ");
+		    print_int(t.my);
+		    print_char(" ");
+		    print_int(t.mz);
+		    print_char("\n");
+		    HAL_Delay(25);
+
+			//ssd1306_Fill(Black);
+
+			//ssd1306_SetCursor(40,5);
+			//ssd1306_WriteString("P:",Font_7x10,White);
+			//ssd1306_SetCursor(60,5);
+			//ssd1306_Write_val(mpu.pitch,Font_7x10,White);
+
+			//ssd1306_SetCursor(40,18);
+			//ssd1306_WriteString("R:",Font_7x10,White);
+			//ssd1306_SetCursor(60,18);
+			//ssd1306_Write_val(mpu.roll,Font_7x10,White);
+/*
+			ssd1306_SetCursor(3,5);
+			ssd1306_Write_fval(t.mx,Font_7x10,White,1);
+
+			ssd1306_SetCursor(3,18);
+			ssd1306_Write_fval(t.my,Font_7x10,White,1);
+
+			ssd1306_SetCursor(3,28);
+			ssd1306_Write_fval(t.mz,Font_7x10,White,1);
+
+			ssd1306_SetCursor(3,38);
+			ssd1306_Write_fval(t.compas,Font_7x10,White,1);
+
+			ssd1306_UpdateScreen(&hi2c1);
+			*/
 
 		}
 
 }
 
+static void bipbip(int bip){
+	for(int ii=0;ii<bip;ii++){
+		for(int i=0;i<200;i++){
 
+			 HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_12);
+			 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12,GPIO_PIN_SET);
+			 delay_us(115);  //120
+			 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12,GPIO_PIN_RESET);
+			 delay_us(300);  //120
+		}
+		delay_ms(100);
+	}
+}
+
+
+//reDefine iqr function
+/*----------------------------------IQR--Handle-----------------------------*/
+                                                                            //
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)                     //
+{                                                                           //
+	/* ibus */                                                              //
+    if(huart == &huart1){                                                   //
+    	ibusCallback(&huart1);                                              //
+    }                                                                       //
+    /* gps */                                                               //
+    else if(huart == &huart3){                                              //
+    	gpsCallback();                                                      //
+    }                                                                       //
+}                                                                           //
+/*----------------------------------IQR--Handle-----------------------------*/
 

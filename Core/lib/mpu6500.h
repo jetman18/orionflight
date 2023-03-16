@@ -7,23 +7,11 @@ extern "C" {
 
 #include "stm32f1xx_hal.h"
 
-typedef struct{
-    int16_t x;
-    int16_t y;
-    int16_t z;
-}axis3_t;
 
-typedef struct{
-    float x;
-    float y;
-    float z;
-}faxis3_t;
-
-
-typedef struct{
-    float pitch;
-	float roll;
-    float yaw;
+typedef struct{//1800 -1800
+    int16_t pitch;
+	int16_t roll;
+    int16_t yaw;
 }euler_angle_t;
 
 typedef struct{
@@ -52,7 +40,7 @@ void mpu_update(euler_angle_t *m,uint16_t dt);
 void updateIMU(float gx, float gy, float gz, float ax, float ay, float az);
 void computeAnglesFromQuaternion(euler_angle_t *m);
 void update(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
-
+void get_AccAngle(euler_angle_t *m);
 #ifdef __cplusplus
 }
 #endif

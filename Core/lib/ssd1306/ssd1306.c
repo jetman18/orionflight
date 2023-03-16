@@ -97,45 +97,62 @@ void ssd1306_Fill(SSD1306_COLOR color)
     }
 }
 
-//
-//  Write the screenbuffer with changed to the screen
-//
-/*
-void ssd1306_UpdateScreen(I2C_HandleTypeDef *hi2c)
+void ssd1306_Fill_row(SSD1306_COLOR color,uint8_t row,uint8_t start,uint8_t deep,uint8_t len)
 {
-    static uint8_t state=1;
-    static uint8_t i=0;
-    static uint8_t ii=0;
-    if(state){
-        ssd1306_WriteCommand(hi2c, 0xB0 + i);
-        ssd1306_WriteCommand(hi2c, 0x00);
-        ssd1306_WriteCommand(hi2c, 0x10);
-        state =0 ;
+    // Fill screenbuffer with a constant value (color)
+   if(deep == 0)return;
+   for(int ii = 128*row + start; ii <len + start + 128*row; ii++)
+    {
+            //SSD1306_Buffer[ii]     = (color == Black) ? 0x00 : 0xFF;
+            for(int k=0;k<deep;k++){
+            SSD1306_Buffer[ii+128*k] = (color == Black) ? 0x00 : 0xFF;
+            }
     }
-    HAL_I2C_Mem_Write(hi2c, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[ii],1,10);
-    ii++;
-    if(ii>127){
-        ii=0;
-        i++;
-        if(i>7)i=0;
-        state =1;
-       // ssd1306_Fill(White);
-       // ssd1306_UpdateScreenn(hi2c);
-    }
-   // else if(ii>1024)ii=0;
 }
-*/
+
+//
+
+
 void ssd1306_UpdateScreen(I2C_HandleTypeDef *hi2c)
 {
-    uint8_t i;
+    uint8_t i=0;
 
     for (i = 0; i <8; i++) {
-        ssd1306_WriteCommand(hi2c, 0xB0 + i);
-        ssd1306_WriteCommand(hi2c, 0x00);
-        ssd1306_WriteCommand(hi2c, 0x10);
+        ssd1306_WriteCommand(hi2c, 0xB0 + i);  //row
+        ssd1306_WriteCommand(hi2c, 0x00);      //0
+        ssd1306_WriteCommand(hi2c, 0x10);      // 16
 
         HAL_I2C_Mem_Write(hi2c, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH, 1000);
+       // HAL_I2C_Mem_Write_DMA(hi2c, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
     }
+}
+
+static uint8_t i2c_txcpl =1;
+static uint8_t updateCplt =1;
+void ssd1306_UpdateScreen2(I2C_HandleTypeDef *hi2c)
+{
+	static int i=0;
+	updateCplt =0;
+	if(i2c_txcpl){
+		ssd1306_WriteCommand(hi2c, 0xB0 + i);  //row
+		//ssd1306_WriteCommand(hi2c, 0x00);      //0
+		//ssd1306_WriteCommand(hi2c, 0x10);      // 16
+		HAL_I2C_Mem_Write_DMA(hi2c, SSD1306_I2C_ADDR, 0x40, 1, &SSD1306_Buffer[SSD1306_WIDTH * i], SSD1306_WIDTH);
+
+		i++;
+		if(i>7){
+			updateCplt = 1;
+			i=0;
+		}
+		i2c_txcpl = 0;
+	}
+}
+uint8_t isReady(){
+	return updateCplt;
+}
+void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	 i2c_txcpl = 1;
 }
 
 //
@@ -181,8 +198,7 @@ char ssd1306_WriteChar(char ch, FontDef Font, SSD1306_COLOR color)
     uint32_t i, b, j;
 
     // Check remaining space on current line
-    if (SSD1306_WIDTH <= (SSD1306.CurrentX + Font.FontWidth) ||
-        SSD1306_HEIGHT <= (SSD1306.CurrentY + Font.FontHeight))
+    if (SSD1306_WIDTH <= (SSD1306.CurrentX + Font.FontWidth) || SSD1306_HEIGHT <= (SSD1306.CurrentY + Font.FontHeight))
     {
         // Not enough space on current line
         return 0;
@@ -288,15 +304,19 @@ char ssd1306_WriteString(char* str, FontDef Font, SSD1306_COLOR color)
     return *str;
 }
 
-void ssd1306_Write_fval(float n, FontDef Font, SSD1306_COLOR color,int afftezero)
+void ssd1306_Write_fval(double n, FontDef Font, SSD1306_COLOR color,int afftezero)
 {
-    float nn=n;
+	if(n == 0.0){
+		ssd1306_WriteString("0.0",Font,color);
+		return;
+	}
+    double nn=n;
     n=fabs(n);
-    int afterpoint=afftezero+1;
+    int afterpoint=afftezero;
     char res[20];
     memset(res,0,sizeof(res));
     int ipart = (int)n;
-    float fpart = n - (float)ipart;
+    double fpart = n - ipart;
     int i = intToStr(ipart, res,1);
 
     if(fpart!=0.0){
@@ -355,4 +375,29 @@ void ssd1306_Write_val(int x, FontDef Font, SSD1306_COLOR color)
         j--;
     }
     ssd1306_WriteString(str,Font,color);
+}
+void ssd1306_Line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, SSD1306_COLOR color) {
+    int32_t deltaX = abs(x2 - x1);
+    int32_t deltaY = abs(y2 - y1);
+    int32_t signX = ((x1 < x2) ? 1 : -1);
+    int32_t signY = ((y1 < y2) ? 1 : -1);
+    int32_t error = deltaX - deltaY;
+    int32_t error2;
+
+    ssd1306_DrawPixel(x2, y2, color);
+
+    while((x1 != x2) || (y1 != y2)) {
+        ssd1306_DrawPixel(x1, y1, color);
+        error2 = error * 2;
+        if(error2 > -deltaY) {
+            error -= deltaY;
+            x1 += signX;
+        }
+
+        if(error2 < deltaX) {
+            error += deltaX;
+            y1 += signY;
+        }
+    }
+    return;
 }

@@ -1,6 +1,6 @@
 #ifndef _QMC5883_H_
 #define _QMC5883_H_
-
+#include "axis.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,9 +17,11 @@ typedef struct{
 }MAG_t;
 void qmc5883_init(I2C_HandleTypeDef *i2cport);
 void qmc_get_raw(MAG_t *t);
-void qmc_get_values(MAG_t *t,float pitch,float roll);
+///void qmc_get_values(MAG_t *t,float pitch,float roll);
 void magnet_sensor_calibrate();
-void qmc_get_3axil_values(MAG_t *t);
+void qmc_get_3axil_values(faxis3_t *t,float pitch,float roll);
+int16_t qmc_get_Heading(float pitch,float roll);  //degre*10
+
 #ifdef __cplusplus
 }
 #endif

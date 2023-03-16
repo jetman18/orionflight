@@ -2,8 +2,35 @@
 #include "math.h"
 #include "usart.h"
 #include "maths.h"
-//extern UART_HandleTypeDef huart1;
-#define uart_port &huart1
+#include "stm32f1xx_hal.h"
+#include "./ssd1306/ssd1306.h"
+#include "string.h"
+static UART_HandleTypeDef *uart_port;
+static I2C_HandleTypeDef  *hi2cc;
+void debugInit(UART_HandleTypeDef *huart,I2C_HandleTypeDef *hi2c){
+    uart_port = huart;
+    hi2cc     = hi2c;
+    ssd1306_Init(hi2cc);
+};
+void debugLog_val(int xx,uint8_t x,uint8_t y){
+     ssd1306_SetCursor(x,y);
+     ssd1306_Write_val(xx,Font_7x10,White);
+}
+void debugLog_fval(double xx,uint8_t x,uint8_t y,int afftezero){
+
+     ssd1306_SetCursor(x,y);
+     ssd1306_Write_fval(xx,Font_7x10,White,afftezero);
+}
+void debugLog_str(char* str,uint8_t x,uint8_t y){
+    ssd1306_SetCursor(x,y);
+    ssd1306_WriteString(str,Font_7x10,White);
+}
+void debug_clear(void){
+     ssd1306_Fill(Black);
+}
+void debug_updateScreen(){
+     ssd1306_UpdateScreen(hi2cc);
+}
 
 static void reverse( char *str, int len)
 {
@@ -87,6 +114,7 @@ void print_char(char *str){
 ///////////////////////////////////////////////////////////////////////////////
 void print_int(int x)
 {   char str[10]; 
+    memset(str,0,10);
     int m=x;
     x=ABS(x);
     int i = 0;

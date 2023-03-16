@@ -1,3 +1,6 @@
-../Core/lib/gps.c:8:13:calcChecksum	24	static
-../Core/lib/gps.c:17:5:init_gps	4	static
-../Core/lib/gps.c:22:5:processGPS	24	static
+../Core/lib/gps.c:136:6:gpsInit	16	static
+../Core/lib/gps.c:160:13:_update_checksum	24	static
+../Core/lib/gps.c:169:11:gpsGetdata	24	static
+../Core/lib/gps.c:172:16:UBLOX_parse_gps	8	static
+../Core/lib/gps.c:243:16:gpsNewFrameUBLOX	24	static
+../Core/lib/gps.c:305:6:gpsCallback	8	static

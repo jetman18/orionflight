@@ -18,11 +18,14 @@ static int ibusFrameDone = false;
 static uint32_t ibusChannelData[IBUS_MAX_CHANNEL];
 static uint8_t ibus[IBUS_BUFFSIZE] = { 0, };
 static uint8_t rx_buff;
+static UART_HandleTypeDef *uart;
 
-UART_HandleTypeDef *uart;
+static uint32_t p_time,delta_t;
 
-void ibusInit(UART_HandleTypeDef *uartt){
+void ibusInit(UART_HandleTypeDef *uartt,uint32_t baudrate){
 	uart = uartt;
+    uartt->Init.BaudRate = baudrate;
+	HAL_UART_Init(uartt); //reInit
 	HAL_UART_Receive_IT(uart, &rx_buff,1);
 }
 
@@ -47,7 +50,8 @@ void ibusDataReceive(uint16_t c)
 
     if (ibusFramePosition == IBUS_BUFFSIZE - 1) {
         ibusFrameDone = true;
-        //failsafeCnt = 0;
+        delta_t = micros() - p_time;
+        p_time  = micros();
     } else {
         ibusFramePosition++;
     }
@@ -83,23 +87,21 @@ int ibusFrameComplete(void)
     return false;
 }
 
-uint16_t ibusReadRawRC(uint8_t chan)
-{
+uint16_t ibusReadRawRC(uint8_t chan){
     return ibusChannelData[chan];
 }
-float ibusReadf(uint8_t chan,float gain)
-{
+float ibusReadf(uint8_t chan,float gain){
 	int16_t val = ibusChannelData[chan];
-     return 	(float)(val-1500)*gain;
+     return 	((float)(val-1500)*gain);
 }
 
+uint32_t getReadTime(){
+    return delta_t;
+};
 
-/**/
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void ibusCallback(UART_HandleTypeDef *huart)
 {
-    if(huart == uart){
-    	HAL_UART_Receive_IT(uart, &rx_buff,1);
-    	ibusDataReceive(rx_buff);
-    }
+    ibusDataReceive(rx_buff);
+    HAL_UART_Receive_IT(uart, &rx_buff,1);
 }
 

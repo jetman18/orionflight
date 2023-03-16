@@ -15,24 +15,15 @@
 int16_t calib_axi[3];
 int16_t maxval[] = {0,0,0};
 const int16_t  calibrate_xyz[3]={-93,81,400};
-// lab test
- /*L1    -613  -148  384
-  *L2    -380  -311  647
-  *L4    -312  -421  685
-  *L5    -345  -496  754
-  *L6    -426  -292  862
-  *L7    -128  -418  89
-  *home test
-  *L1    -145  -119 828
-  *L2    -210  -181 820
-  *L3     279   572 366
-  * */
-
-
 const uint8_t qmc_addres = (0x0d<<1);
 I2C_HandleTypeDef *qmc_i2cport;
 
-const int16_t z_calib_value =500;
+float combined_bias[3]={130.445,78.9098,-129.84};
+
+float clMatix[9]={7.898715 , -0.299080, -0.012913,
+		          -0.299080, 8.613594,   0.031860,
+				  -0.012913, 0.031860,   8.744643};
+
 void qmc5883_init(I2C_HandleTypeDef *i2cport){
 	qmc_i2cport = i2cport;
     uint8_t buf[2];
@@ -46,37 +37,59 @@ void qmc5883_init(I2C_HandleTypeDef *i2cport){
 void qmc_get_raw(MAG_t *t){
 	uint8_t buf[6];
 	HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
-	t->mx=((int16_t)buf[1]<<8|buf[0]) - calibrate_xyz[0];
-	t->my=((int16_t)buf[3]<<8|buf[2]) - calibrate_xyz[1];
-	t->mz=((int16_t)buf[5]<<8|buf[4]) - calibrate_xyz[2];
+	t->mx=((int16_t)buf[1]<<8|buf[0]) - 61875;
+	t->my=((int16_t)buf[3]<<8|buf[2]) - 54970;
+	t->mz=((int16_t)buf[5]<<8|buf[4]) - 54775;
 
-	t->compas=atan2_approx(t->mx,t->my)*180.0f/3.1415f;
-	if(t->compas<0)t->compas=360.0f + t->compas;
+	//t->compas=atan2_approx(t->mx,t->my)*180.0f/3.1415f;
+	//if(t->compas<0)t->compas=360.0f + t->compas;
 }
-
-void qmc_get_3axil_values(MAG_t *t){
-      static uint8_t count=0;
-	  static int16_t  mx,my,mz;
+/*
+void qmc_get_3axil_values(faxis3_t *t,float pitch,float roll){
 	  uint8_t buf[6]={0};
-      switch(count){
-      	  case 0:
-      		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
-      		mx=((int16_t)buf[1]<<8|buf[0]) - calibrate_xyz[0];
-      		my=((int16_t)buf[3]<<8|buf[2]) - calibrate_xyz[1];
-      		mz=((int16_t)buf[5]<<8|buf[4]) - calibrate_xyz[2];
-            count++;
-      		break;
-      	  case 1:
-      		t->compas=atan2_approx(my,mx)*180.0f/3.1415f;
-      		//if(t->compas<0)t->compas=360.0f + t->compas;
-      		count =0;
-      		break;
-      }
+	  float mx,my,mz;
+	  float x,y,z;
+	  HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
+	  mx=((int16_t)buf[1]<<8|buf[0]) - 61000 - 875;
+	  my=((int16_t)buf[3]<<8|buf[2]) - 55000 + 25;
+	  mz=((int16_t)buf[5]<<8|buf[4]) - 54000 - 775;
+
+
+	  mx -=combined_bias[0];
+	  my -=combined_bias[1];
+	  mz -=combined_bias[2];
+
+	  x = mx*clMatix[0] + my*clMatix[1] + mz*clMatix[2];
+	  y = mx*clMatix[3] + my*clMatix[4] + mz*clMatix[5];
+	  z = mx*clMatix[6] + my*clMatix[7] + mz*clMatix[8];
+
+     // pitch*=0.0174f;
+     // roll*=0.0174f;
+
+     t->x = x;//*cos(pitch) - mz*sin(pitch);
+     t->y = y;//*sin(pitch)*cos(roll) + my*cos(roll) - mz*cos(pitch)*sin(roll);
+     t->z = z;
 }
+*/
+void qmc_get_3axil_values(faxis3_t *t,float pitch,float roll){
+	  uint8_t buf[6]={0};
+	  int16_t mx,my,mz;
+	  HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
+	  mx=((int16_t)buf[1]<<8|buf[0]) - 61000 - 875;
+	  my=((int16_t)buf[3]<<8|buf[2]) - 55000 + 25;
+	  mz=((int16_t)buf[5]<<8|buf[4]) - 54000 - 775;
 
+	  mz*=1.1;
 
-float mx_,my_;
-void qmc_get_values(MAG_t *t,float x,float y){
+      pitch*=0.0174f;
+      roll*=0.0174f;
+
+      t->x = mx*cos(pitch) - mz*sin(pitch);
+      t->y = mx*sin(pitch)*sin(roll) + my*cos(roll) - mz*cos(pitch)*sin(roll);
+      t->z = mz;
+}
+/*
+void qmc_get_values(MAG_t *t,float pitch,float roll){
       static uint8_t count_mag=0;
 	  static int16_t mx,my,mz;
 	  uint8_t buf[2];
@@ -84,40 +97,98 @@ void qmc_get_values(MAG_t *t,float x,float y){
       switch(count_mag){
       	  case 0:
       		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,2,1);
-      		mx=((int16_t)buf[1]<<8|buf[0]) - 165;// - calib_axi[0];//calibrate_xyz[0];
+      		mx=((int16_t)buf[1]<<8|buf[0]) - 61875;
             count_mag++;
       		break;
+
       	  case 1:
       		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x02,1,buf,2,1);
-      		my=((int16_t)buf[1]<<8|buf[0]) + 145;// - calib_axi[1];//calibrate_xyz[1];
+      		my=((int16_t)buf[1]<<8|buf[0]) - 54970;
             count_mag++;
       		break;
+
       	  case 2:
       		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x04,1,buf,2,1);
-      		mz=((int16_t)buf[1]<<8|buf[0]) + 330;// - calib_axi[2];//calibrate_xyz[2] - z_calib_value;
+      		mz=((int16_t)buf[1]<<8|buf[0]) - 54775 ;
             count_mag++;
       		break;
+
       	  case 3:
-      		x  *= 0.01745f;
-      		y  *= 0.01745f;
+      		pitch  *= 0.01745f;
+      		roll  *= 0.01745f;
 
-      		float cosx = cos_approx(x);
-      		float cosy = cos_approx(y);
-      		float sinx = sin_approx(x);
-      		float siny = sin_approx(y);
+      		float cosP = cos_approx(pitch);
+      		float cosR = cos_approx(roll);
+      		float sinP = sin_approx(pitch);
+      		float sinR = sin_approx(roll);
 
-      		t->mx =  mx*cosy + mz*siny;
-      		t->my =  mx*sinx*siny + my*cosx - mz*sinx*cosy;
-      		t->mz = -mx*cosx*siny + my*sinx + mz*cosx*cosy;
+            t->mx = mx*cosP - mz*sinP;
+            t->my = mx*sinP*sinR + my*cosR - mz*cosP*sinR;
+            t->mz = mz;
+			count_mag++;
+			break;
 
-      		//t->compas=atan2_approx((float)my,(float)mx)*180.0f/3.1415f;
-      		//if(t->compas<0)t->compas=360.0f + t->compas;
+            case 4:
+      		t->compas=atan2_approx((float)t->my,(float)t->mx)*180.0f/3.1415f;
+      		if(t->compas<0)t->compas=360.0f + t->compas;
       		count_mag =0;
       		break;
       }
 
 }
+*/
 
+
+int16_t qmc_get_Heading(float pitch,float roll){
+	static uint8_t count_mag=0;
+	static int16_t mx,my,mz;
+	static int16_t heading;//0-3600
+	static int16_t offset_mx = 61875;
+	static int16_t offset_my = 54970;
+	static int16_t offset_mz = 54775;
+
+	uint8_t buf[2];
+      switch(count_mag){
+      	  case 0:
+      		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,2,1);
+      		mx=((int16_t)buf[1]<<8|buf[0]) - offset_mx;
+            count_mag++;
+      		break;
+      	  case 1:
+      		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x02,1,buf,2,1);
+      		my=((int16_t)buf[1]<<8|buf[0]) - offset_my;
+            count_mag++;
+      		break;
+      	  case 2:
+      		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x04,1,buf,2,1);
+      		mz=((int16_t)buf[1]<<8|buf[0]) - offset_mz;
+            count_mag++;
+      		break;
+      	  case 3:
+      		pitch  *= 0.01745f;
+      		roll   *= 0.01745f;
+      		float cosP = cos_approx(pitch);
+			float sinP = sin_approx(pitch);
+ 
+		    float cosR = cos_approx(roll);
+      		float sinR = sin_approx(roll);
+
+            int16_t m_x = mx*cosP - mz*sinP;
+            int16_t m_y = mx*sinP*sinR + my*cosR - mz*cosP*sinR;
+			mx=m_x;
+			my=m_y;
+
+			count_mag++;
+			break;
+
+          case 4:
+      		heading = atan2_approx((float)my,(float)mx)*1800/3.1415f;
+      		if(heading<0)heading=3600 + heading;
+      		count_mag =0;
+      		break;
+      }
+	  return heading;
+}
 
 int16_t max_val[] = {-32767,-32767,-32767};
 int16_t min_val[] = {32767, 32767, 32767};

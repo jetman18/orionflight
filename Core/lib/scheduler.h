@@ -12,13 +12,10 @@ extern "C" {
 #include "timeclock.h"
 
 /**
- *@brief  lap      lich nhiem vu
+ *@brief  
  *@param  hz       tan so lap
- *@param  timeout  thoi gian cho
- *@param  task     ham nhiem vu
- */
-/*
- * tao vong lap voi chu ki hz
+ *@param  timeout 
+ *@param  task    
  */
 #define FEQUENCY_DIV(div,z) if(fequency_division(div,z))
 

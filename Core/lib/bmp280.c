@@ -1,9 +1,3 @@
-/*
- * bmp280.c
- *
- *  Created on: 21 thg 1, 2023
- *      Author: sudo
- */
 
 #include "bmp280.h"
 #include "math.h"
@@ -230,7 +224,6 @@ bool bmp280_read_fixed(BMP280_HandleTypedef *dev, float *temp,float *press,float
 	static int bmp_count=0;
 	static int32_t temperature;
 	static int32_t pressure;
-	static float altit=0;
 	uint8_t data[3];
 	if(bmp_count == 0){
 		if (read_data(dev, 0xf7, data,3)) {
@@ -241,29 +234,29 @@ bool bmp280_read_fixed(BMP280_HandleTypedef *dev, float *temp,float *press,float
 		return true;
 	}
 
-	if(bmp_count == 1){
+	else if(bmp_count == 1){
 		if (read_data(dev, 0xfA, data,3)) {
 			return false;
 		}
 		adc_temp = data[0] << 12 | data[1] << 4 | data[2] >> 4;
 		bmp_count++;
 		return true;
-	}
+	 }
 
-	if(bmp_count == 2){
+	else if(bmp_count == 2){
 		 temperature = compensate_temperature(dev, adc_temp, &fine_temp);
 		 bmp_count++;
 		 return true;
 	}
-	if(bmp_count == 3){
+	else if(bmp_count == 3){
 		 pressure = compensate_pressure(dev, adc_pressure, fine_temp);
 		 bmp_count++;
 		 return true;
 	}
-	if(bmp_count == 4){
+	else if(bmp_count == 4){
 		*press = (float)pressure;
 		*temp  = (float)temperature/100;
-		*altitude =((44330 * (1.0 - powf((float)pressure/(101325*100), 0.1903))) - 25842.0f)*100;
+		*altitude =((44330 * (1.0 - powf((float)pressure/(102416), 0.1903))))*100;
 
 		 bmp_count = 0;
 		 return true;

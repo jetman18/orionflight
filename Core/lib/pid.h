@@ -15,14 +15,9 @@ typedef struct{
 	float PID;
 	float pre_value;
 	float D_smooth;
-
-	float e;
-
-    uint32_t delta_time;
-	uint64_t p_time;
 }pid__t;
-
-void pidCalculate(pid__t *gain,float sensor,float control,float f_cut);
+uint32_t getReadTime();
+void  pidCalculate(pid__t *gain,float sensor,float control,uint16_t delta_time,uint16_t f_cut);
 #ifdef __cplusplus
 }
 #endif

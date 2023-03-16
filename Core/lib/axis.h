@@ -1,35 +1,27 @@
-/*
- * This file is part of Cleanflight and Betaflight.
- *
- * Cleanflight and Betaflight are free software. You can redistribute
- * this software and/or modify this software under the terms of the
- * GNU General Public License as published by the Free Software
- * Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * Cleanflight and Betaflight are distributed in the hope that they
- * will be useful, but WITHOUT ANY WARRANTY; without even the implied
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this software.
- *
- * If not, see <http://www.gnu.org/licenses/>.
- */
-
-
 #ifndef _AXIS_H_
 #define _AXIS_H_
+#include "stdio.h"
 typedef enum {
     X = 0,
     Y,
     Z
 } axis_e;
 
+typedef struct{
+    int16_t x;
+    int16_t y;
+    int16_t z;
+}axis3_t;
+
+typedef struct{
+    float x;
+    float y;
+    float z;
+}faxis3_t;
+
+
 #define XYZ_AXIS_COUNT 3
 
-// See http://en.wikipedia.org/wiki/Flight_dynamics
 typedef enum {
     FD_ROLL = 0,
     FD_PITCH,
