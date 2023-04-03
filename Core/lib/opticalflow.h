@@ -7,8 +7,16 @@
 
 #ifndef LIB_OPTICALFLOW_H_
 #define LIB_OPTICALFLOW_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void pasrseMsg(char k);
+#include"stdio.h"
+void pasrseMsg(uint8_t k);
 void flowCallback();
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif /* LIB_OPTICALFLOW_H_ */

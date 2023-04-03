@@ -7,6 +7,8 @@
 #include "string.h"
 static UART_HandleTypeDef *uart_port;
 static I2C_HandleTypeDef  *hi2cc;
+static int sig;
+static int indexx;
 void debugInit(UART_HandleTypeDef *huart,I2C_HandleTypeDef *hi2c){
     uart_port = huart;
     hi2cc     = hi2c;
@@ -32,9 +34,9 @@ void debug_updateScreen(){
      ssd1306_UpdateScreen(hi2cc);
 }
 
-static void reverse( char *str, int len)
+static void reverse( uint8_t *str, int len)
 {
-    int i = 0, j = len - 1, temp;
+    int i = sig, j = len - 1, temp;
     while (i < j) {
         temp = str[i];
         str[i] = str[j];
@@ -43,98 +45,44 @@ static void reverse( char *str, int len)
         j--;
     }
 }
-static int intToStr(int x,  char *str, int d)
+static int intToStr(int x,  uint8_t *str, int d)
 {
-    int i = 0;
     while (x) {
-        str[i++] = (x % 10) + '0';
+        str[indexx++] = (x % 10) + '0';
         x = x / 10;
     }
 
-    while (i < d)
-        str[i++] = '0';
-  
-    reverse(str, i);
-    str[i] = '\0';
-    return i;
+    while (indexx < d)
+        str[indexx++] = '0';
+    reverse(str,indexx);
+    return indexx;
 }
 
 #define afftezero 3  //float 
 
 void print_float(float n)
 {  
-    float nn=n;
-    n=fabs(n);
-    int afterpoint=afftezero+1;
-    char res[20];
-    int ipart = (int)n;
-    float fpart = n - (float)ipart;
-    int i = intToStr(ipart, res,1);
 
-    if(fpart!=0.0){
-          if (afterpoint != 0) {
-              res[i] = '.'; 
-              fpart = fpart * pow(10, afterpoint);
-        
-              int ii=intToStr((int)fpart, res + i + 1,afterpoint);
-              if(nn<0.0f){
-                 for(int l=ii+i+1;l>=0;l--){
-                  res[l+1]=res[l];                
-                 }
-                 res[0]='-';
-                 i++;
-              }
-              HAL_UART_Transmit(uart_port,(uint8_t *)&res,i+ii,100);
-          }
-       }
-    else {
-      if(nn<0.0f){
-         for(int l=i+1;l>=0;l--)res[l+1]=res[l];                
-         res[0]='-';
-         i++;
-        }
-        HAL_UART_Transmit(uart_port,(uint8_t *)&res,i,100);
-    }
 }
-////////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-void print_char(char *str){
-	 int k;
-   for(int i=0;i<30;i++){
-      if(str[i]=='\0'){
-      k=i;
-      break;
-     }
-    }
-	 HAL_UART_Transmit(uart_port,(uint8_t *)str,k,100);
+void write_char(char *str)
+{
+    uint16_t len=0;
+    while(str[len++]);
+    HAL_UART_Transmit(uart_port,(uint8_t *)str,len,100);
 }
-////////////////////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////
-void print_int(int x)
-{   char str[10]; 
-    memset(str,0,10);
-    int m=x;
-    x=ABS(x);
-    int i = 0;
-    while (x) {
-        str[i++] = (x % 10) + '0';
-        x = x / 10;
+void write_int(int x)
+{
+    indexx=0;
+    sig = 0;
+    uint8_t str_[11];
+    memset(str_,0,11);
+    if(x<0){
+        x*=-1;
+        str_[0] = '-';
+        indexx++;
+        sig = 1;
     }
-    if(m<0){
-       int y=i;
-       while (i < y+1)
-           str[i++] = '-';
-     }
-
-    int k = 0, j = i - 1, temp;
-    while (k < j) {
-        temp = str[k];
-        str[k] = str[j];
-        str[j] = temp;
-        k++;
-        j--;
-    }   
- HAL_UART_Transmit(uart_port,(uint8_t *)str,i,100);
+   int len = intToStr(x,str_,0);
+   HAL_UART_Transmit(uart_port,str_,len,100);
 }

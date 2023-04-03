@@ -19,7 +19,7 @@ extern "C" {
 #define DISABLE 0
 
 /* mpu configuration*/
-#define MPU_VIA_SPI
+//#define MPU_VIA_SPI
 //#define MPU_VIA_I2C
 
 
