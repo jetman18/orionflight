@@ -8,10 +8,10 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 
 
-typedef struct{//1800 -1800
-    int16_t pitch;
-	int16_t roll;
-    int16_t yaw;
+typedef struct{
+    float pitch; /*1800  -1800*/
+	float roll;
+    float yaw;
 }euler_angle_t;
 
 typedef struct{
@@ -23,24 +23,10 @@ typedef struct{
     int16_t gyroz;
 }IMU_raw_t;
 
-typedef struct{
-   float pitch;
-   float roll;
-   float yaw;
-
-   float xx;
-   float yy;
-   float zz;
-
-}IMU_t;
-
-void MPU_i2c_init(I2C_HandleTypeDef *i2c);
-void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t pin);
-void mpu_update(euler_angle_t *m,uint16_t dt);
-void updateIMU(float gx, float gy, float gz, float ax, float ay, float az);
-void computeAnglesFromQuaternion(euler_angle_t *m);
-void update(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
+//void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t pin);
+void imu_update(euler_angle_t *m,uint16_t dt);
 void get_AccAngle(euler_angle_t *m);
+void MPU_i2c_init(I2C_HandleTypeDef *i2cport);
 #ifdef __cplusplus
 }
 #endif

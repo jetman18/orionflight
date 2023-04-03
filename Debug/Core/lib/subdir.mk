@@ -11,6 +11,7 @@ C_SRCS += \
 ../Core/lib/ibus.c \
 ../Core/lib/maths.c \
 ../Core/lib/mpu6500.c \
+../Core/lib/opticalflow.c \
 ../Core/lib/pid.c \
 ../Core/lib/ppmreceiver.c \
 ../Core/lib/pwmwrite.c \
@@ -24,6 +25,7 @@ OBJS += \
 ./Core/lib/ibus.o \
 ./Core/lib/maths.o \
 ./Core/lib/mpu6500.o \
+./Core/lib/opticalflow.o \
 ./Core/lib/pid.o \
 ./Core/lib/ppmreceiver.o \
 ./Core/lib/pwmwrite.o \
@@ -37,6 +39,7 @@ C_DEPS += \
 ./Core/lib/ibus.d \
 ./Core/lib/maths.d \
 ./Core/lib/mpu6500.d \
+./Core/lib/opticalflow.d \
 ./Core/lib/pid.d \
 ./Core/lib/ppmreceiver.d \
 ./Core/lib/pwmwrite.d \
@@ -51,7 +54,7 @@ Core/lib/%.o Core/lib/%.su: ../Core/lib/%.c Core/lib/subdir.mk
 clean: clean-Core-2f-lib
 
 clean-Core-2f-lib:
-	-$(RM) ./Core/lib/bmp280.d ./Core/lib/bmp280.o ./Core/lib/bmp280.su ./Core/lib/debug.d ./Core/lib/debug.o ./Core/lib/debug.su ./Core/lib/gps.d ./Core/lib/gps.o ./Core/lib/gps.su ./Core/lib/ibus.d ./Core/lib/ibus.o ./Core/lib/ibus.su ./Core/lib/maths.d ./Core/lib/maths.o ./Core/lib/maths.su ./Core/lib/mpu6500.d ./Core/lib/mpu6500.o ./Core/lib/mpu6500.su ./Core/lib/pid.d ./Core/lib/pid.o ./Core/lib/pid.su ./Core/lib/ppmreceiver.d ./Core/lib/ppmreceiver.o ./Core/lib/ppmreceiver.su ./Core/lib/pwmwrite.d ./Core/lib/pwmwrite.o ./Core/lib/pwmwrite.su ./Core/lib/qmc5883.d ./Core/lib/qmc5883.o ./Core/lib/qmc5883.su ./Core/lib/timeclock.d ./Core/lib/timeclock.o ./Core/lib/timeclock.su
+	-$(RM) ./Core/lib/bmp280.d ./Core/lib/bmp280.o ./Core/lib/bmp280.su ./Core/lib/debug.d ./Core/lib/debug.o ./Core/lib/debug.su ./Core/lib/gps.d ./Core/lib/gps.o ./Core/lib/gps.su ./Core/lib/ibus.d ./Core/lib/ibus.o ./Core/lib/ibus.su ./Core/lib/maths.d ./Core/lib/maths.o ./Core/lib/maths.su ./Core/lib/mpu6500.d ./Core/lib/mpu6500.o ./Core/lib/mpu6500.su ./Core/lib/opticalflow.d ./Core/lib/opticalflow.o ./Core/lib/opticalflow.su ./Core/lib/pid.d ./Core/lib/pid.o ./Core/lib/pid.su ./Core/lib/ppmreceiver.d ./Core/lib/ppmreceiver.o ./Core/lib/ppmreceiver.su ./Core/lib/pwmwrite.d ./Core/lib/pwmwrite.o ./Core/lib/pwmwrite.su ./Core/lib/qmc5883.d ./Core/lib/qmc5883.o ./Core/lib/qmc5883.su ./Core/lib/timeclock.d ./Core/lib/timeclock.o ./Core/lib/timeclock.su
 
 .PHONY: clean-Core-2f-lib
 

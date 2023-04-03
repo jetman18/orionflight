@@ -24,14 +24,13 @@ Core/flymode/quadrotor/mainloop.o: ../Core/flymode/quadrotor/mainloop.c \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_i2c.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h \
- ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/qmc5883.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/axis.h \
- ../Core/Inc/i2c.h ../Core/Inc/main.h ../Core/Inc/spi.h \
- ../Core/Inc/usart.h ../Core/Inc/gpio.h \
+ ../Core/Inc/i2c.h ../Core/Inc/main.h ../Core/Inc/usart.h \
+ ../Core/Inc/gpio.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h \
  ../Core/Inc/tim.h \
  C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/scheduler.h \
@@ -73,7 +72,6 @@ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/mpu6500.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_i2c.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h:
-../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h:
@@ -81,7 +79,6 @@ C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/qmc5883.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/axis.h:
 ../Core/Inc/i2c.h:
 ../Core/Inc/main.h:
-../Core/Inc/spi.h:
 ../Core/Inc/usart.h:
 ../Core/Inc/gpio.h:
 C:/Users/sudo/Documents/GitHub/orionflight/Core/lib/timeclock.h:

@@ -5,20 +5,22 @@
 #include "math.h"
 #include "lpf.h"
 #include "../flymode/quadrotor/config.h"
-#include "spi.h"
+//#include "spi.h"
 #include "timeclock.h"
 #include "debug.h"
 #include "axis.h"
 /*hel*/
-const float gain_cp =0.0002f;
+const float gain_cp =0.0001f;
 const float f_cut = 200.0f;
 #define LSB_gyr  131.0f
+#define I2C
+//#define SPI
 //#define ACCSMOOTH
 
 static int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
 static float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
-static SPI_HandleTypeDef mpu_spi_port;
-static I2C_HandleTypeDef mpu_i2cport;
+//static SPI_HandleTypeDef mpu_spi_port;
+static I2C_HandleTypeDef *mpu_i2cport;
 static GPIO_TypeDef *mpu_gpio_port = NULL;
 static uint16_t mpu_cs_pin;
 
@@ -41,12 +43,22 @@ static int mpu_read_gyro(axis3_t *k){
 	  axis3_t p_val =*k;
 	  uint8_t buffe[6];
 	  buffe[0]= 0x43;// gyro address
+#ifdef I2C
+	  HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffe,1,100);
+	  HAL_I2C_Master_Receive(mpu_i2cport,0x68<<1,buffe,6,100);
+
+	  k->x = (int16_t)buffe[0]<<8|buffe[1];
+	  k->y = (int16_t)buffe[2]<<8|buffe[3];
+	  k->z = (int16_t)buffe[4]<<8|buffe[5];
+
+#endif
+#ifdef SPI
 	  buffe[0] |=0x80;
 	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
 	  HAL_SPI_Transmit(&mpu_spi_port,&buffe[0],1,100);
 	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
 	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
-
+#endif
 	  k->x=(int16_t)buffe[0]<<8|buffe[1];
 	  k->y=(int16_t)buffe[2]<<8|buffe[3];
 	  k->z=(int16_t)buffe[4]<<8|buffe[5];
@@ -64,6 +76,15 @@ static int mpu_read_acc(axis3_t *k){
 	axis3_t p_val =*k;
 	  uint8_t buffe[6];
 	  buffe[0] = 0x3b;// acc address
+#ifdef I2C
+	  HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffe,1,100);
+	  HAL_I2C_Master_Receive(mpu_i2cport,0x68<<1,buffe,6,100);
+
+	  k->x = (int16_t)buffe[0]<<8|buffe[1];
+	  k->y = (int16_t)buffe[2]<<8|buffe[3];
+	  k->z = (int16_t)buffe[4]<<8|buffe[5];
+#endif
+#ifdef SPI
 	  buffe[0] |=0x80;
 	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
 	  HAL_SPI_Transmit(&mpu_spi_port,buffe,1,100);
@@ -73,7 +94,7 @@ static int mpu_read_acc(axis3_t *k){
 	  k->x=(int16_t)buffe[0]<<8|buffe[1];
 	  k->y=(int16_t)buffe[2]<<8|buffe[3];
 	  k->z=(int16_t)buffe[4]<<8|buffe[5];
-
+#endif
       if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z)){
 		return 1;
 	  }
@@ -88,7 +109,7 @@ static void get_offset(){
 	uint16_t k1 = 0;
 	uint16_t k2 = 0;
 
-	for(int i=0;i<1000;i++){
+	for(int i=0;i<2000;i++){
 		// gyro
 		if(!mpu_read_gyro(&gyro_)){
 			k1++;
@@ -133,13 +154,12 @@ static void get_offset(){
     if((k1 == 0) && (k2 == 0)){
     	while(1){
     		HAL_Delay(1000);
-			debug_clear();
-			debugLog_str("mpu fail to calibrate !",5,5);
-			debug_updateScreen();
+    		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+
     	}
     }
 }
-
+/*
 void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t pin){
 	mpu_gpio_port = gpio_port;
 	mpu_spi_port = *spiportt;
@@ -163,20 +183,38 @@ void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t 
 	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_RESET);
 	HAL_SPI_Transmit(&mpu_spi_port,data,2,100);
 	HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
-	/*get offset values*/
+	///get offset values
 	get_offset();
+}
+*/
 
+void MPU_i2c_init(I2C_HandleTypeDef *i2cport){
+	uint8_t buffer[6];
+	mpu_i2cport = i2cport;
+
+    buffer[0] = 0x6B; // Send request to the register you want to access
+  	buffer[1] = 0x00; // Set the requested register
+  	HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffer,2,100);
+  	// Configure gyro(500dps full scale)
+  	buffer[0] = 0x1B;  // Send request to the register you want to access
+  	buffer[1] = 0x00;  // Set the requested register
+  	HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffer,2,100);
+  	// Configure accelerometer(+/- 8g)
+  	buffer[0] = 0x1C;  // Send request to the register you want to access
+  	buffer[1] = 0x00;  // Set the requested register
+  	HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffer,2,100);
+  	get_offset();
 }
 
 static void gyro_read(faxis3_t *angle,uint16_t dt){
-	float lsb2rad = dt*(float)(1e-07f)*0.00013323f;
+	float dTime = (float)dt*0.000001f*0.000131;
 	axis3_t p;
 	if(mpu_read_gyro(&p)){
-		return ;
-	};
-    angle->x  = (float)(p.x - gyr_offs_x)*lsb2rad;
-    angle->y  = (float)(p.y - gyr_offs_y)*lsb2rad;
-    angle->z  = (float)(p.z - gyr_offs_z)*lsb2rad;
+		return;
+	}
+    angle->x  = (float)(p.x - gyr_offs_x)*dTime;
+    angle->y  = (float)(p.y - gyr_offs_y)*dTime;
+    angle->z  = (float)(p.z - gyr_offs_z)*dTime;
 }
 
 static void rotateV(faxis3_t *vector,faxis3_t delta)
@@ -247,14 +285,14 @@ void get_AccAngle(euler_angle_t *m){
 	m->roll   = atan2_approx(-acc.x, (1/invSqrt_(acc.y * acc.y + acc.z * acc.z)))*180/M_PIf;
 
 }
-void mpu_update(euler_angle_t *m,uint16_t dt){
+void imu_update(euler_angle_t *m,uint16_t dt){
 	faxis3_t gyro,acc;
 	static faxis3_t accSmooth;
 	axis3_t  acce;
 	uint32_t sum;
 	float length;
-
     gyro_read(&gyro,dt);
+
 	rotateV(&vect,gyro);
     mpu_read_acc(&acce);
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
@@ -279,15 +317,22 @@ void mpu_update(euler_angle_t *m,uint16_t dt){
 	accSmooth.z = acc.z;
 #endif
 
-    /* Apply complimentary filter */
+    // Apply complimentary filter
     vect.x +=gain_cp*(accSmooth.x - vect.x);
     vect.y +=gain_cp*(accSmooth.y - vect.y);
     vect.z +=gain_cp*(accSmooth.z - vect.z);
 
-	/*calculate angles*/
-	m->pitch  = atan2_approx(vect.y,vect.z)*1800/M_PIf;
-    m->roll   = atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*1800/M_PIf;
-    m->yaw    = gyro.z*10;
+	//*calculate angles
+#ifdef SPI
+	m->pitch  = atan2_approx(vect.y,vect.z)*180/M_PIf;
+    m->roll   = atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
+    m->yaw    = gyro.z*1000;
+#endif
+#ifdef I2C
+	m->roll  = atan2_approx(vect.y,vect.z)*180/M_PIf;
+    m->pitch   = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
+    m->yaw    = gyro.z*1000;
+#endif
 
 }
 

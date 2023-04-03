@@ -21,7 +21,7 @@ void qmc_get_raw(MAG_t *t);
 void magnet_sensor_calibrate();
 void qmc_get_3axil_values(faxis3_t *t,float pitch,float roll);
 int16_t qmc_get_Heading(float pitch,float roll);  //degre*10
-
+int mpu_read_gyro(axis3_t *k);
 #ifdef __cplusplus
 }
 #endif
