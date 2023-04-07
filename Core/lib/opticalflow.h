@@ -12,10 +12,10 @@ extern "C" {
 #endif
 
 #include"stdio.h"
-void pasrseMsg(uint8_t k);
+#include "usart.h"
+void flowInit(UART_HandleTypeDef *uartt,uint32_t baudrate);
 void flowCallback();
-
-
+int get_flow(int x);
 #ifdef __cplusplus
 }
 #endif

@@ -99,7 +99,7 @@ uint32_t getReadTime(){
     return delta_t;
 };
 
-void ibusCallback(UART_HandleTypeDef *huart)
+void ibusCallback()
 {
     ibusDataReceive(rx_buff);
     HAL_UART_Receive_IT(uart, &rx_buff,1);

@@ -30,7 +30,7 @@ void ibusDataReceive(uint16_t c);
 uint16_t ibusReadRawRC(uint8_t chan);
 float ibusReadf(uint8_t chan,float gain);
 void ibusInit(UART_HandleTypeDef *uartt,uint32_t baudrate);
-void ibusCallback(UART_HandleTypeDef *huart);
+void ibusCallback();
 #ifdef __cplusplus
 }
 #endif

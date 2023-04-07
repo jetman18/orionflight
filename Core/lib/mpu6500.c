@@ -1,3 +1,4 @@
+#include <log.h>
 #include "mpu6500.h"
 #include "stm32f1xx_hal.h"
 #include "maths.h"
@@ -7,7 +8,6 @@
 #include "../flymode/quadrotor/config.h"
 //#include "spi.h"
 #include "timeclock.h"
-#include "debug.h"
 #include "axis.h"
 /*hel*/
 const float gain_cp =0.0001f;
@@ -17,6 +17,7 @@ const float f_cut = 200.0f;
 //#define SPI
 //#define ACCSMOOTH
 
+static int16_t  gyro[3];
 static int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
 static float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
 //static SPI_HandleTypeDef mpu_spi_port;
@@ -70,8 +71,10 @@ static int mpu_read_gyro(axis3_t *k){
 
 	}
 
+int16_t get_gyro(int axis){
+     return gyro[axis];
+}
 
-//get acc raw value
 static int mpu_read_acc(axis3_t *k){
 	axis3_t p_val =*k;
 	  uint8_t buffe[6];
@@ -207,14 +210,17 @@ void MPU_i2c_init(I2C_HandleTypeDef *i2cport){
 }
 
 static void gyro_read(faxis3_t *angle,uint16_t dt){
-	float dTime = (float)dt*0.000001f*0.000131;
+	float dTime = dt*(1e-06f)*0.000131;
 	axis3_t p;
 	if(mpu_read_gyro(&p)){
 		return;
 	}
-    angle->x  = (float)(p.x - gyr_offs_x)*dTime;
-    angle->y  = (float)(p.y - gyr_offs_y)*dTime;
-    angle->z  = (float)(p.z - gyr_offs_z)*dTime;
+	gyro[0] =p.x - gyr_offs_x;
+	gyro[1] =p.y - gyr_offs_y;
+	gyro[2] =p.z - gyr_offs_z;
+    angle->x  = (float)gyro[0]*dTime;
+    angle->y  = (float)gyro[1]*dTime;
+    angle->z  = (float)gyro[2]*dTime;
 }
 
 static void rotateV(faxis3_t *vector,faxis3_t delta)
@@ -273,6 +279,9 @@ void get_AccAngle(euler_angle_t *m){
 	float length;
 
     mpu_read_acc(&acce);
+    m->pitch = acce.x;
+	m->roll  = acce.y;
+    /*
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
 	if(sum == 0){
 		return;
@@ -283,12 +292,12 @@ void get_AccAngle(euler_angle_t *m){
     acc.z = acce.z*length;
 	m->pitch  = atan2_approx(acc.y,acc.z)*180/M_PIf;
 	m->roll   = atan2_approx(-acc.x, (1/invSqrt_(acc.y * acc.y + acc.z * acc.z)))*180/M_PIf;
-
+   */
 }
+static axis3_t  acce;
 void imu_update(euler_angle_t *m,uint16_t dt){
 	faxis3_t gyro,acc;
 	static faxis3_t accSmooth;
-	axis3_t  acce;
 	uint32_t sum;
 	float length;
     gyro_read(&gyro,dt);
@@ -334,5 +343,10 @@ void imu_update(euler_angle_t *m,uint16_t dt){
     m->yaw    = gyro.z*1000;
 #endif
 
+}
+void resetVector(){
+	vect.x = acce.x;
+	vect.y = acce.y;
+	vect.z = acce.z;
 }
 

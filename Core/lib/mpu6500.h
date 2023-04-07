@@ -27,6 +27,8 @@ typedef struct{
 void imu_update(euler_angle_t *m,uint16_t dt);
 void get_AccAngle(euler_angle_t *m);
 void MPU_i2c_init(I2C_HandleTypeDef *i2cport);
+int16_t get_gyro(int axis);
+void resetVector();
 #ifdef __cplusplus
 }
 #endif
