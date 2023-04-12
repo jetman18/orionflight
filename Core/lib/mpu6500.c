@@ -10,20 +10,20 @@
 #include "timeclock.h"
 #include "axis.h"
 /*hel*/
-const float gain_cp =0.0001f;
-const float f_cut = 200.0f;
-#define LSB_gyr  131.0f
+const float gain_cp =0.0005f;
+const float f_cut = 150.0f;
+#define LSB_gyr  32.8f
 #define I2C
 //#define SPI
-//#define ACCSMOOTH
+#define ACCSMOOTH
 
 static int16_t  gyro[3];
 static int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
 static float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
 //static SPI_HandleTypeDef mpu_spi_port;
 static I2C_HandleTypeDef *mpu_i2cport;
-static GPIO_TypeDef *mpu_gpio_port = NULL;
-static uint16_t mpu_cs_pin;
+//static GPIO_TypeDef *mpu_gpio_port = NULL;
+//static uint16_t mpu_cs_pin;
 
 static faxis3_t vect = {0,0,1}; // x y z
 static const uint8_t mpu_address =(0x68<<1);
@@ -45,8 +45,8 @@ static int mpu_read_gyro(axis3_t *k){
 	  uint8_t buffe[6];
 	  buffe[0]= 0x43;// gyro address
 #ifdef I2C
-	  HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffe,1,100);
-	  HAL_I2C_Master_Receive(mpu_i2cport,0x68<<1,buffe,6,100);
+	  HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffe,1,100);
+	  HAL_I2C_Master_Receive(mpu_i2cport,mpu_address,buffe,6,100);
 
 	  k->x = (int16_t)buffe[0]<<8|buffe[1];
 	  k->y = (int16_t)buffe[2]<<8|buffe[3];
@@ -80,8 +80,8 @@ static int mpu_read_acc(axis3_t *k){
 	  uint8_t buffe[6];
 	  buffe[0] = 0x3b;// acc address
 #ifdef I2C
-	  HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffe,1,100);
-	  HAL_I2C_Master_Receive(mpu_i2cport,0x68<<1,buffe,6,100);
+	  HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffe,1,100);
+	  HAL_I2C_Master_Receive(mpu_i2cport,mpu_address,buffe,6,100);
 
 	  k->x = (int16_t)buffe[0]<<8|buffe[1];
 	  k->y = (int16_t)buffe[2]<<8|buffe[3];
@@ -197,45 +197,49 @@ void MPU_i2c_init(I2C_HandleTypeDef *i2cport){
 
     buffer[0] = 0x6B; // Send request to the register you want to access
   	buffer[1] = 0x00; // Set the requested register
-  	HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffer,2,100);
+  	HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffer,2,100);
   	// Configure gyro(500dps full scale)
   	buffer[0] = 0x1B;  // Send request to the register you want to access
-  	buffer[1] = 0x00;  // Set the requested register
-  	HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffer,2,100);
+  	buffer[1] = 0x10;  // Set the requested register
+  	HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffer,2,100);
   	// Configure accelerometer(+/- 8g)
   	buffer[0] = 0x1C;  // Send request to the register you want to access
   	buffer[1] = 0x00;  // Set the requested register
-  	HAL_I2C_Master_Transmit(mpu_i2cport,0x68<<1,buffer,2,100);
+  	HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffer,2,100);
   	get_offset();
 }
 
-static void gyro_read(faxis3_t *angle,uint16_t dt){
-	float dTime = dt*(1e-06f)*0.000131;
+static void gyro_read(faxis3_t *angle){
 	axis3_t p;
 	if(mpu_read_gyro(&p)){
 		return;
 	}
-	gyro[0] =p.x - gyr_offs_x;
-	gyro[1] =p.y - gyr_offs_y;
-	gyro[2] =p.z - gyr_offs_z;
-    angle->x  = (float)gyro[0]*dTime;
-    angle->y  = (float)gyro[1]*dTime;
-    angle->z  = (float)gyro[2]*dTime;
+	gyro[X] =p.x - gyr_offs_x;
+	gyro[Y] =p.y - gyr_offs_y;
+	gyro[Z] =p.z - gyr_offs_z;
+    angle->x  = (float)gyro[X]/LSB_gyr;
+    angle->y  = (float)gyro[Y]/LSB_gyr;
+    angle->z  = (float)gyro[Z]/LSB_gyr;
 }
 
-static void rotateV(faxis3_t *vector,faxis3_t delta)
+static void rotateV(faxis3_t *vector,faxis3_t delta,uint16_t dt)
 {
     float mat[3][3];
     float cosx, sinx, cosy, siny, cosz, sinz;
     float coszcosx, sinzcosx, coszsinx, sinzsinx;
 	faxis3_t vec;
+    
+	float toRaddt = dt*(float)(1e-06f)*0.01745f;
+	float angleX = delta.x*toRaddt;
+	float angleY = delta.y*toRaddt;
+	float angleZ = delta.z*toRaddt;
 
-    cosx = cos_approx(delta.x);
-    sinx = sin_approx(delta.x);
-    cosy = cos_approx(delta.y);
-    siny = sin_approx(delta.y);
-    cosz = cos_approx(delta.z);
-    sinz = sin_approx(delta.z);
+    cosx = cos_approx(angleX);
+    sinx = sin_approx(angleX);
+    cosy = cos_approx(angleY);
+    siny = sin_approx(angleY);
+    cosz = cos_approx(angleZ);
+    sinz = sin_approx(angleZ);
 
     coszcosx = cosz * cosx;
     sinzcosx = sinz * cosx;
@@ -272,7 +276,7 @@ static float invSqrt_(float x)
 	//y = y * (1.5f - (halfx * y * y));
 	return y;
 }
-void get_AccAngle(euler_angle_t *m){
+void get_AccAngle(attitude_t *m){
 	axis3_t  acce;
 	faxis3_t acc;
 	uint32_t sum;
@@ -295,14 +299,17 @@ void get_AccAngle(euler_angle_t *m){
    */
 }
 static axis3_t  acce;
-void imu_update(euler_angle_t *m,uint16_t dt){
+void imu_update(attitude_t *m,uint16_t dt){
 	faxis3_t gyro,acc;
 	static faxis3_t accSmooth;
 	uint32_t sum;
 	float length;
-    gyro_read(&gyro,dt);
+    gyro_read(&gyro);
+    m->pitch_velocity = gyro.y;
+	m->roll_velocity  = gyro.x;
+	m->yaw_velocity   = gyro.z;
+	rotateV(&vect,gyro,dt);
 
-	rotateV(&vect,gyro);
     mpu_read_acc(&acce);
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
 	if(sum == 0){
@@ -326,10 +333,10 @@ void imu_update(euler_angle_t *m,uint16_t dt){
 	accSmooth.z = acc.z;
 #endif
 
-    // Apply complimentary filter
-    vect.x +=gain_cp*(accSmooth.x - vect.x);
-    vect.y +=gain_cp*(accSmooth.y - vect.y);
-    vect.z +=gain_cp*(accSmooth.z - vect.z);
+    //complimentary filter
+    vect.x = vect.x + gain_cp*(accSmooth.x - vect.x);
+    vect.y = vect.y + gain_cp*(accSmooth.y - vect.y);
+    vect.z = vect.z + gain_cp*(accSmooth.z - vect.z);
 
 	//*calculate angles
 #ifdef SPI
@@ -337,16 +344,19 @@ void imu_update(euler_angle_t *m,uint16_t dt){
     m->roll   = atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
     m->yaw    = gyro.z*1000;
 #endif
+
 #ifdef I2C
-	m->roll  = atan2_approx(vect.y,vect.z)*180/M_PIf;
-    m->pitch   = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
-    m->yaw    = gyro.z*1000;
+	m->roll   =  atan2_approx(vect.y,vect.z)*180/M_PIf;
+    m->pitch  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
+    m->yaw    =  gyro.z*100;
 #endif
 
 }
+/*
 void resetVector(){
-	vect.x = acce.x;
-	vect.y = acce.y;
-	vect.z = acce.z;
+	vect.x = gyro.x;
+	vect.y = gyro.y;
+	vect.z = gyro.z;
 }
+*/
 
