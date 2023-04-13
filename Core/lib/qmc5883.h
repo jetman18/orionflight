@@ -16,12 +16,9 @@ typedef struct{
    float compas;
 }MAG_t;
 void qmc5883_init(I2C_HandleTypeDef *i2cport);
-void qmc_get_raw(MAG_t *t);
-///void qmc_get_values(MAG_t *t,float pitch,float roll);
 void magnet_sensor_calibrate();
-void qmc_get_3axil_values(faxis3_t *t,float pitch,float roll);
-int16_t qmc_get_Heading(float pitch,float roll);  //degre*10
-int mpu_read_gyro(axis3_t *k);
+int qmc_get_Heading(float *heading,float pitch,float roll);  //degre*10
+void qmc_get(axis3_t *t,float pitch,float roll);
 #ifdef __cplusplus
 }
 #endif

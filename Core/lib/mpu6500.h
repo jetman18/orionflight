@@ -32,7 +32,7 @@ void imu_update(attitude_t *m,uint16_t dt);
 void get_AccAngle(attitude_t *m);
 void MPU_i2c_init(I2C_HandleTypeDef *i2cport);
 int16_t get_gyro(int axis);
-void resetVector();
+void IMUresetVector();
 #ifdef __cplusplus
 }
 #endif

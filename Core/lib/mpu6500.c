@@ -10,7 +10,7 @@
 #include "timeclock.h"
 #include "axis.h"
 /*hel*/
-const float gain_cp =0.0005f;
+const float gain_cp =0.0002f;
 const float f_cut = 150.0f;
 #define LSB_gyr  32.8f
 #define I2C
@@ -28,7 +28,7 @@ static I2C_HandleTypeDef *mpu_i2cport;
 static faxis3_t vect = {0,0,1}; // x y z
 static const uint8_t mpu_address =(0x68<<1);
 
-static void normalizeV(axis3_t *src)
+void normalizeV(axis3_t *src)
 {
     int32_t sum;
 	sum = src->x*src->x + src->y*src->y + src->z*src->z;
@@ -299,9 +299,9 @@ void get_AccAngle(attitude_t *m){
    */
 }
 static axis3_t  acce;
+static faxis3_t accSmooth;
 void imu_update(attitude_t *m,uint16_t dt){
 	faxis3_t gyro,acc;
-	static faxis3_t accSmooth;
 	uint32_t sum;
 	float length;
     gyro_read(&gyro);
@@ -352,11 +352,11 @@ void imu_update(attitude_t *m,uint16_t dt){
 #endif
 
 }
-/*
-void resetVector(){
-	vect.x = gyro.x;
-	vect.y = gyro.y;
-	vect.z = gyro.z;
+
+void IMUresetVector(){
+	vect.x = accSmooth.x;
+	vect.y = accSmooth.y;
+	vect.z = accSmooth.z;
 }
-*/
+
 

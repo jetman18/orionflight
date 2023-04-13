@@ -29,13 +29,11 @@ pid__t Pid_angle_pitch_t,Pid_angle_roll_t,Pid_angle_yaw_t,flow_x_axis,flow_y_axi
 pid__t Pid_velocity_pitch_t,Pid_velocity_roll_t, Pid_velocity_yaw_t;
 static uint16_t moto1,moto2,moto3,moto4;
 static attitude_t mpu;
-static float gyrox;
-static float gyroy;
-static float gyroz;
 float buffe1[GYRO_DELAY];
 float buffe2[GYRO_DELAY];
 float storeGyro1(float data);
 float storeGyro2(float data);
+static float gyro_yaw,qmc_yaw;
 //BMP280_HandleTypedef bmp280;
 //static float temperature,pressure,altitude;
 void main_loop(){
@@ -49,7 +47,7 @@ void main_loop(){
 	Pid_angle_pitch_t.max_pid =120;  //
 	Pid_angle_pitch_t.f_cut_D =200;
 
-	Pid_angle_yaw_t.kp =100;
+	Pid_angle_yaw_t.kp =2;
 	Pid_angle_yaw_t.ki =0;//1000
 	Pid_angle_yaw_t.kd = 0;
 	Pid_angle_yaw_t.max_i = 0;
@@ -67,13 +65,13 @@ void main_loop(){
 	Pid_velocity_yaw_t.kp =3;
 	Pid_velocity_yaw_t.ki =2;
 	Pid_velocity_yaw_t.kd = 0;
-	Pid_velocity_yaw_t.max_i = 300;
-	Pid_velocity_yaw_t.max_pid = 400;
+	Pid_velocity_yaw_t.max_i = 100;
+	Pid_velocity_yaw_t.max_pid = 150;
 	Pid_velocity_yaw_t.f_cut_D =0;
 
 	const float ch1_scale = 0.3f;
 	const float ch2_scale = 0.3f;
-	const float ch4_scale = 0.3f;
+	const float ch4_scale = 10;
     
 	const uint16_t dttime = 2000;
 #if 0
@@ -106,16 +104,13 @@ void main_loop(){
 	Pid_angle_roll_t.f_cut_D =Pid_angle_pitch_t.f_cut_D;
 
 /*-----------------INIT MODULES----------------------*/
-    /*--pwm-out--*/
 	initPWM(&htim4);
 	motoIdle();
-	/*------------------*/
 	initTimeloop(&htim3);
-	/*--ibus--*/
 	ibusInit(&huart1,115200);
-	/*--MPU--*/
-	//MPU_spi_init(&hspi1,GPIOA,GPIO_PIN_4);
 	MPU_i2c_init(&hi2c2);
+	qmc5883_init(&hi2c2);
+
 	/*--GPS--*/
 	//gpsInit(&huart3,57600);
 
@@ -125,23 +120,22 @@ void main_loop(){
     //bmp280.i2c = &hi2c1;
 	//bmp280_init(&bmp280,&bmp280.params);
 
-	//qmc5883_init(&hi2c1);
-
 	/*flow*/
 	//flowInit(&huart2,115200);
 /*--------------------------------------------*/
 while(1){
-
-	static uint8_t quality_;
+	//static uint8_t quality_;
+	static float k_ =1.0f;
     static int start_ = 0;
+    static float rx_yaw;
 
+    start_ = 1;
     if(ibusFrameComplete()){
 		rx_ch1=ibusReadf(CH1,ch1_scale);
 		rx_ch2=ibusReadf(CH2,ch2_scale);
 		throttle=ibusReadRawRC(CH3);
 		ch5=ibusReadRawRC(CH5);
 		rx_ch4=ibusReadf(CH4,ch4_scale);
-		start_ =1;
 		/*
 		if(!start_){
 			if(ibusReadRawRC(CH3)<1100 &&  ibusReadRawRC(CH4)<1100 &&
@@ -151,10 +145,16 @@ while(1){
         }
         */
     }
-
+    rx_yaw += rx_ch4*(float)(1e-06f)*50;
 	imu_update(&mpu,dttime);
-    //write_int(&huart1,mpu.roll);
-    //write_char(&huart1,"\n");
+	gyro_yaw = gyro_yaw - mpu.yaw_velocity*dttime*(float)(1e-06f);
+	if(qmc_get_Heading(&qmc_yaw,mpu.pitch,mpu.roll)){
+		gyro_yaw = gyro_yaw + k_*(qmc_yaw - gyro_yaw);
+		if(k_>0.02f){
+			k_ = k_ - 0.01f;
+			rx_yaw = gyro_yaw;
+		}
+	}
 	/*optical flow  25hz*/
 #if 0
 	 FEQUENCY_DIV(20,ENABLE){
@@ -190,14 +190,14 @@ while(1){
 #endif  
 	   /*Pid */
 		if(start_ && throttle>MINIMUN_THROTTLE){
-			//angle pid
+			//angle
 			pidCalculate(&Pid_angle_pitch_t,mpu.pitch,rx_ch2,2000);//rx_ch2
 			pidCalculate(&Pid_angle_roll_t ,mpu.roll,rx_ch1,2000);//rx_ch1
-			//pidCalculate(&Pid_angle_yaw_t  ,mpu.yaw,rx_ch4,2000);//rx_ch4
-			//velocity pid
+			pidCalculate(&Pid_angle_yaw_t,gyro_yaw,rx_yaw,2000);
+			//velocity
 			pidCalculate(&Pid_velocity_pitch_t,mpu.pitch_velocity,Pid_angle_pitch_t.PID,2000);
 			pidCalculate(&Pid_velocity_roll_t,mpu.roll_velocity,-Pid_angle_roll_t.PID,2000);
-			pidCalculate(&Pid_velocity_yaw_t ,mpu.yaw_velocity,rx_ch4,2000);
+			pidCalculate(&Pid_velocity_yaw_t ,mpu.yaw_velocity,Pid_angle_yaw_t.PID,2000);
 
 			moto1 = throttle + Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
 			moto2 = throttle + Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
@@ -217,20 +217,26 @@ while(1){
 			Pid_velocity_pitch_t.I=0.0f;
 			Pid_velocity_roll_t.I =0.0f;
 			Pid_velocity_yaw_t.I  =0.0f;
-			//resetVector();
+
+			rx_yaw = gyro_yaw;
+			IMUresetVector();
 			motoIdle();
 		   }
 
 /*-------------------------------------------------------------------------------------*/
 	 /*send attitude to pc*/
-//	 static mavlink_message_t msg;
-//	 FEQUENCY_DIV(100,ENABLE){
-//		 //60 us
- //        int len = mavlink_msg_attitude_pack(0,10, &msg, 0,mpu.roll,mpu.pitch,mpu.yaw,gyroy,gyrox,gyroz);
- //        HAL_UART_Transmit_DMA(&huart2,(uint8_t*)&msg,len);
- //   }
+	 static mavlink_message_t msg;
+	 FEQUENCY_DIV(25,ENABLE){
+		 //60 us
+		 static uint8_t buffer[50];
+		 uint16_t mil = millis();
+         mavlink_msg_attitude_pack(0,0,&msg,mil,mpu.roll,mpu.pitch,mpu.yaw,
+        		          mpu.roll_velocity,mpu.pitch_velocity,mpu.yaw_velocity);
+         int len = mavlink_msg_to_send_buffer(buffer,&msg);
+         HAL_UART_Transmit_DMA(&huart2,buffer,len);
+    }
      /*blink led pb3-pb4 */
-	 FEQUENCY_DIV(500,ENABLE){
+	 FEQUENCY_DIV(250,ENABLE){
      	 HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_4);
      }
 	 /*quality check*/
