@@ -22,13 +22,12 @@
 #include "opticalflow.h"
 #define GYRO_DELAY 4
 #define MINIMUN_THROTTLE 1030
-uint32_t m1,m2;
 static float  rx_ch1,rx_ch2,rx_ch4;
 static uint16_t throttle,ch5;
 pid__t Pid_angle_pitch_t,Pid_angle_roll_t,Pid_angle_yaw_t,flow_x_axis,flow_y_axis;
 pid__t Pid_velocity_pitch_t,Pid_velocity_roll_t, Pid_velocity_yaw_t;
 static uint16_t moto1,moto2,moto3,moto4;
-static attitude_t mpu;
+static attitude_t quad_;
 float buffe1[GYRO_DELAY];
 float buffe2[GYRO_DELAY];
 float storeGyro1(float data);
@@ -71,9 +70,9 @@ void main_loop(){
 
 	const float ch1_scale = 0.3f;
 	const float ch2_scale = 0.3f;
-	const float ch4_scale = 10;
+	const float ch4_scale = 0.15f;
     
-	const uint16_t dttime = 2000;
+	const uint16_t dt = 2000;
 #if 0
 	flow_x_axis.kp =7.0f;
 	flow_x_axis.ki =0;
@@ -145,10 +144,10 @@ while(1){
         }
         */
     }
-    rx_yaw += rx_ch4*(float)(1e-06f)*50;
-	imu_update(&mpu,dttime);
-	gyro_yaw = gyro_yaw - mpu.yaw_velocity*dttime*(float)(1e-06f);
-	if(qmc_get_Heading(&qmc_yaw,mpu.pitch,mpu.roll)){
+    rx_yaw += rx_ch4*(float)(1e-06f)*dt;
+	imu_update(&quad_,dt);
+	gyro_yaw = gyro_yaw - quad_.yaw_velocity*dt*(float)(1e-06f);
+	if(qmc_get_Heading(&qmc_yaw,quad_.pitch,quad_.roll)){
 		gyro_yaw = gyro_yaw + k_*(qmc_yaw - gyro_yaw);
 		if(k_>0.02f){
 			k_ = k_ - 0.01f;
@@ -191,13 +190,13 @@ while(1){
 	   /*Pid */
 		if(start_ && throttle>MINIMUN_THROTTLE){
 			//angle
-			pidCalculate(&Pid_angle_pitch_t,mpu.pitch,rx_ch2,2000);//rx_ch2
-			pidCalculate(&Pid_angle_roll_t ,mpu.roll,rx_ch1,2000);//rx_ch1
-			pidCalculate(&Pid_angle_yaw_t,gyro_yaw,rx_yaw,2000);
+			pidCalculate(&Pid_angle_pitch_t,quad_.pitch,rx_ch2,dt);//rx_ch2
+			pidCalculate(&Pid_angle_roll_t ,quad_.roll,rx_ch1,dt);//rx_ch1
+			pidCalculate(&Pid_angle_yaw_t,gyro_yaw,rx_yaw,dt);
 			//velocity
-			pidCalculate(&Pid_velocity_pitch_t,mpu.pitch_velocity,Pid_angle_pitch_t.PID,2000);
-			pidCalculate(&Pid_velocity_roll_t,mpu.roll_velocity,-Pid_angle_roll_t.PID,2000);
-			pidCalculate(&Pid_velocity_yaw_t ,mpu.yaw_velocity,Pid_angle_yaw_t.PID,2000);
+			pidCalculate(&Pid_velocity_pitch_t,quad_.pitch_velocity,Pid_angle_pitch_t.PID,dt);
+			pidCalculate(&Pid_velocity_roll_t,quad_.roll_velocity,-Pid_angle_roll_t.PID,dt);
+			pidCalculate(&Pid_velocity_yaw_t ,quad_.yaw_velocity,Pid_angle_yaw_t.PID,dt);
 
 			moto1 = throttle + Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
 			moto2 = throttle + Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
@@ -219,19 +218,19 @@ while(1){
 			Pid_velocity_yaw_t.I  =0.0f;
 
 			rx_yaw = gyro_yaw;
-			IMUresetVector();
 			motoIdle();
 		   }
 
 /*-------------------------------------------------------------------------------------*/
 	 /*send attitude to pc*/
 	 static mavlink_message_t msg;
-	 FEQUENCY_DIV(25,ENABLE){
+	 FEQUENCY_DIV(13,ENABLE){
 		 //60 us
-		 static uint8_t buffer[50];
-		 uint16_t mil = millis();
-         mavlink_msg_attitude_pack(0,0,&msg,mil,mpu.roll,mpu.pitch,mpu.yaw,
-        		          mpu.roll_velocity,mpu.pitch_velocity,mpu.yaw_velocity);
+		 static uint8_t buffer[36];
+
+		 uint32_t mil = millis();
+         mavlink_msg_attitude_pack(0,0,&msg,mil,quad_.roll,quad_.pitch,rx_yaw,
+        		         0,0,0);
          int len = mavlink_msg_to_send_buffer(buffer,&msg);
          HAL_UART_Transmit_DMA(&huart2,buffer,len);
     }
@@ -246,7 +245,7 @@ while(1){
 			  HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_3);
 		 else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3,0);
     }*/
-    looptime(dttime);
+    looptime(dt);
    }
 }
 
@@ -262,7 +261,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)                     //
     }                                                                       //
     /* optical flow */                                                      //
     else if(huart == &huart2){                                              //
-    	flowCallback();
+    	//flowCallback();
      }                                                                      //
 }                                                                           //
 /*----------------------------------IQR--Handle-----------------------------*/

@@ -348,9 +348,8 @@ void imu_update(attitude_t *m,uint16_t dt){
 #ifdef I2C
 	m->roll   =  atan2_approx(vect.y,vect.z)*180/M_PIf;
     m->pitch  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
-    m->yaw    =  gyro.z*100;
+    m->yaw    =  gyro.z;
 #endif
-
 }
 
 void IMUresetVector(){
