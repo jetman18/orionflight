@@ -24,8 +24,8 @@ C_DEPS :=
 SUBDIRS := \
 Core/Src \
 Core/Startup \
-Core/flymode/quadrotor \
 Core/lib \
 Core/lib/ssd1306 \
+Core/quadrotor \
 Drivers/STM32F1xx_HAL_Driver/Src \
 

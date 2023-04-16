@@ -5,10 +5,9 @@
 #include "i2c.h"
 #include "math.h"
 #include "lpf.h"
-#include "../flymode/quadrotor/config.h"
-//#include "spi.h"
 #include "timeclock.h"
 #include "axis.h"
+#include "../quadrotor/config.h"
 /*hel*/
 const float gain_cp =0.0002f;
 const float f_cut = 150.0f;
@@ -17,7 +16,7 @@ const float f_cut = 150.0f;
 //#define SPI
 #define ACCSMOOTH
 
-static int16_t  gyro[3];
+static int16_t  acc__[3];
 static int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
 static float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
 //static SPI_HandleTypeDef mpu_spi_port;
@@ -48,10 +47,6 @@ static int mpu_read_gyro(axis3_t *k){
 	  HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffe,1,100);
 	  HAL_I2C_Master_Receive(mpu_i2cport,mpu_address,buffe,6,100);
 
-	  k->x = (int16_t)buffe[0]<<8|buffe[1];
-	  k->y = (int16_t)buffe[2]<<8|buffe[3];
-	  k->z = (int16_t)buffe[4]<<8|buffe[5];
-
 #endif
 #ifdef SPI
 	  buffe[0] |=0x80;
@@ -60,9 +55,10 @@ static int mpu_read_gyro(axis3_t *k){
 	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
 	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
 #endif
-	  k->x=(int16_t)buffe[0]<<8|buffe[1];
-	  k->y=(int16_t)buffe[2]<<8|buffe[3];
-	  k->z=(int16_t)buffe[4]<<8|buffe[5];
+
+	  k->x = (int16_t)buffe[0]<<8|buffe[1];
+	  k->y = (int16_t)buffe[2]<<8|buffe[3];
+	  k->z = (int16_t)buffe[4]<<8|buffe[5];
 
 	  if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z)){
 		return 1;
@@ -71,8 +67,8 @@ static int mpu_read_gyro(axis3_t *k){
 
 	}
 
-int16_t get_gyro(int axis){
-     return gyro[axis];
+int16_t get_acc(int axis){
+     return acc__[axis];
 }
 
 static int mpu_read_acc(axis3_t *k){
@@ -82,10 +78,6 @@ static int mpu_read_acc(axis3_t *k){
 #ifdef I2C
 	  HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffe,1,100);
 	  HAL_I2C_Master_Receive(mpu_i2cport,mpu_address,buffe,6,100);
-
-	  k->x = (int16_t)buffe[0]<<8|buffe[1];
-	  k->y = (int16_t)buffe[2]<<8|buffe[3];
-	  k->z = (int16_t)buffe[4]<<8|buffe[5];
 #endif
 #ifdef SPI
 	  buffe[0] |=0x80;
@@ -93,11 +85,15 @@ static int mpu_read_acc(axis3_t *k){
 	  HAL_SPI_Transmit(&mpu_spi_port,buffe,1,100);
 	  HAL_SPI_Receive(&mpu_spi_port,buffe,6,100);
 	  HAL_GPIO_WritePin(mpu_gpio_port,mpu_cs_pin,GPIO_PIN_SET);
-
-	  k->x=(int16_t)buffe[0]<<8|buffe[1];
-	  k->y=(int16_t)buffe[2]<<8|buffe[3];
-	  k->z=(int16_t)buffe[4]<<8|buffe[5];
 #endif
+
+	  acc__[X] = (int16_t)buffe[0]<<8|buffe[1];
+	  acc__[Y] = (int16_t)buffe[2]<<8|buffe[3];
+	  acc__[Z]  =(int16_t)buffe[4]<<8|buffe[5];
+
+	  k->x = acc__[X];
+	  k->y = acc__[Y];
+	  k->z = acc__[Z];
       if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z)){
 		return 1;
 	  }
@@ -214,12 +210,9 @@ static void gyro_read(faxis3_t *angle){
 	if(mpu_read_gyro(&p)){
 		return;
 	}
-	gyro[X] =p.x - gyr_offs_x;
-	gyro[Y] =p.y - gyr_offs_y;
-	gyro[Z] =p.z - gyr_offs_z;
-    angle->x  = (float)gyro[X]/LSB_gyr;
-    angle->y  = (float)gyro[Y]/LSB_gyr;
-    angle->z  = (float)gyro[Z]/LSB_gyr;
+	angle->x  = ((float)(p.x - gyr_offs_x))/LSB_gyr;
+	angle->y  = ((float)(p.y - gyr_offs_y))/LSB_gyr;
+	angle->z  = ((float)(p.z - gyr_offs_z))/LSB_gyr;
 }
 
 static void rotateV(faxis3_t *vector,faxis3_t delta,uint16_t dt)
@@ -346,7 +339,7 @@ void imu_update(attitude_t *m,uint16_t dt){
 #endif
 
 #ifdef I2C
-	m->roll   =  atan2_approx(vect.y,vect.z)*180/M_PIf;
+	m->roll   = atan2_approx(vect.y,vect.z)*180/M_PIf;
     m->pitch  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
     m->yaw    =  gyro.z;
 #endif

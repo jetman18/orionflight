@@ -1,6 +1,5 @@
 #include "MAVLink/common/mavlink.h"
 #include <log.h>
-#include "mainloop.h"
 #include "mpu6500.h"
 #include "qmc5883.h"
 #include "i2c.h"
@@ -15,11 +14,11 @@
 #include "lpf.h"
 #include "bmp280.h"
 #include "ibus.h"
-#include "config.h"
 #include <string.h>
 #include "gps.h"
 #include "./ssd1306/ssd1306.h"
 #include "opticalflow.h"
+#include "../quadrotor/config.h"
 #define GYRO_DELAY 4
 #define MINIMUN_THROTTLE 1030
 static float  rx_ch1,rx_ch2,rx_ch4;
@@ -33,8 +32,13 @@ float buffe2[GYRO_DELAY];
 float storeGyro1(float data);
 float storeGyro2(float data);
 static float gyro_yaw,qmc_yaw;
+static void rotate(faxis3_t *vector,faxis3_t delta);
 //BMP280_HandleTypedef bmp280;
 //static float temperature,pressure,altitude;
+/************************************test variab***************/
+int accx,accy,accz;
+uint32_t mil;
+axis3_t k;
 void main_loop(){
 /*----------PARAMETER-init----------------------*/
 
@@ -144,8 +148,14 @@ while(1){
         }
         */
     }
+    //mpu_read_gyro(&k);
+
     rx_yaw += rx_ch4*(float)(1e-06f)*dt;
 	imu_update(&quad_,dt);
+	//accx = get_acc(X);
+	//accy = get_acc(Y);
+	//accz = get_acc(Z);
+
 	gyro_yaw = gyro_yaw - quad_.yaw_velocity*dt*(float)(1e-06f);
 	if(qmc_get_Heading(&qmc_yaw,quad_.pitch,quad_.roll)){
 		gyro_yaw = gyro_yaw + k_*(qmc_yaw - gyro_yaw);
@@ -154,6 +164,7 @@ while(1){
 			rx_yaw = gyro_yaw;
 		}
 	}
+
 	/*optical flow  25hz*/
 #if 0
 	 FEQUENCY_DIV(20,ENABLE){
@@ -228,7 +239,7 @@ while(1){
 		 //60 us
 		 static uint8_t buffer[36];
 
-		 uint32_t mil = millis();
+		 mil = millis();
          mavlink_msg_attitude_pack(0,0,&msg,mil,quad_.roll,quad_.pitch,rx_yaw,
         		         0,0,0);
          int len = mavlink_msg_to_send_buffer(buffer,&msg);
@@ -280,5 +291,47 @@ float storeGyro2(float data){
 	}
 	return  buffe2[0];
 }
+static void rotate(faxis3_t *vector,faxis3_t delta)
+{
+    float mat[3][3];
+    float cosx, sinx, cosy, siny, cosz, sinz;
+    float coszcosx, sinzcosx, coszsinx, sinzsinx;
+	faxis3_t vec;
 
+	float toRaddt = 0.01745f;
+	float angleX = delta.x*toRaddt;
+	float angleY = delta.y*toRaddt;
+	float angleZ = delta.z*toRaddt;
+
+    cosx = cos_approx(angleX);
+    sinx = sin_approx(angleX);
+    cosy = cos_approx(angleY);
+    siny = sin_approx(angleY);
+    cosz = cos_approx(angleZ);
+    sinz = sin_approx(angleZ);
+
+    coszcosx = cosz * cosx;
+    sinzcosx = sinz * cosx;
+    coszsinx = sinx * cosz;
+    sinzsinx = sinx * sinz;
+
+    mat[0][0] = cosz * cosy;
+    mat[0][1] = -cosy * sinz;
+    mat[0][2] = siny;
+    mat[1][0] = sinzcosx + (coszsinx * siny);
+    mat[1][1] = coszcosx - (sinzsinx * siny);
+    mat[1][2] = -sinx * cosy;
+    mat[2][0] = (sinzsinx) - (coszcosx * siny);
+    mat[2][1] = (coszsinx) + (sinzcosx * siny);
+    mat[2][2] = cosy * cosx;
+
+    vec.x = vector->x * mat[0][0] + vector->y * mat[1][0] + vector->z * mat[2][0];
+    vec.y = vector->x * mat[0][1] + vector->y * mat[1][1] + vector->z * mat[2][1];
+    vec.z = vector->x * mat[0][2] + vector->y * mat[1][2] + vector->z * mat[2][2];
+
+    vector->x =  vec.x;
+	vector->y =  vec.y;
+	vector->z =  vec.z;
+
+}
 
