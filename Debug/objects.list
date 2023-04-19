@@ -16,6 +16,7 @@
 "./Core/lib/ibus.o"
 "./Core/lib/log.o"
 "./Core/lib/maths.o"
+"./Core/lib/mavlink_handler.o"
 "./Core/lib/mpu6500.o"
 "./Core/lib/opticalflow.o"
 "./Core/lib/pid.o"

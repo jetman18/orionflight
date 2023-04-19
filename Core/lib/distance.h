@@ -13,8 +13,9 @@
 extern "C" {
 #endif
 void rs04Callback();
-uint16_t getDistance();
-
+int getDistance();
+int isHcNewdata();
+void trige();
 #ifdef __cplusplus
 }
 #endif

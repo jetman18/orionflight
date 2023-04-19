@@ -24,7 +24,6 @@ typedef struct __mavlink_statustext_t
          } \
 }
 
-
 /**
  * @brief Pack a statustext message
  * @param system_id ID of this system

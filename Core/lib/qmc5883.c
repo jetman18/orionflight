@@ -42,6 +42,7 @@ void qmc_get(axis3_t *t,float pitch,float roll){
 	  t->y=((int16_t)buf[3]<<8|buf[2]);
 	  t->z=((int16_t)buf[5]<<8|buf[4]);
 
+	  /*
 	  pitch  *= 0.01745f;
 	  roll   *= 0.01745f;
 	  float cosP = cos_approx(pitch);
@@ -54,7 +55,7 @@ void qmc_get(axis3_t *t,float pitch,float roll){
       int16_t m_y = t->x*sinP*sinR + t->y*cosR - t->z*cosP*sinR;
 	  t->x=m_x;
 	  t->y=m_y;
-
+*/
 }
 
 
@@ -62,8 +63,8 @@ int qmc_get_Heading(float *heading,float pitch,float roll){
 	static uint8_t count_mag=0;
 	static int16_t mx,my,mz;
 	static int16_t offset_mx = -230;
-	static int16_t offset_my = -60;
-	static int16_t offset_mz = 150;
+	static int16_t offset_my = -200;
+	static int16_t offset_mz = 0;
 	static float sum_=0,offset1 =0,offset2=0;
     static float heading_;
 	uint8_t buf[2];

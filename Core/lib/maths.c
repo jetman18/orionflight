@@ -340,3 +340,11 @@ int16_t qMultiply(fix12_t q, int16_t input) {
 fix12_t  qConstruct(int16_t num, int16_t den) {
     return (num << 12) / den;
 }
+/*
+float roundVal(float val,float round){
+   int de_ = 1/round;
+   int k_ = val*de_;
+   return (float)k_/de_;
+}
+#define ROUND_NUM(x,y) (float)((int)(x*(1/y)))/(1/y)
+*/

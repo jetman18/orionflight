@@ -53,7 +53,8 @@ int write_int(UART_HandleTypeDef *huart,int x)
     uint8_t str_[11];
     memset(str_,0,11);
     if(x==0){
-    	 HAL_UART_Transmit(huart,'0',1,100);
+    	 str_[0]= 48;
+    	 HAL_UART_Transmit(huart,str_,1,100);
     	 return 1;
     }
     if(x<0){

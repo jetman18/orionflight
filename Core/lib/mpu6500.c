@@ -302,7 +302,9 @@ void imu_update(attitude_t *m,uint16_t dt){
 	m->roll_velocity  = gyro.x;
 	m->yaw_velocity   = gyro.z;
 	rotateV(&vect,gyro,dt);
-
+    //vect.x = ROUND_NUM(vect.x,2);
+	//vect.y = ROUND_NUM(vect.y,2);
+	//vect.z = ROUND_NUM(vect.z,2);
     mpu_read_acc(&acce);
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
 	if(sum == 0){
@@ -339,8 +341,10 @@ void imu_update(attitude_t *m,uint16_t dt){
 #endif
 
 #ifdef I2C
-	m->roll   = atan2_approx(vect.y,vect.z)*180/M_PIf;
-    m->pitch  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
+	float roll_   =  atan2_approx(vect.y,vect.z)*180/M_PIf;
+	float pitch_  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
+	m->roll = ROUND_NUM(roll_,2);
+    m->pitch  = ROUND_NUM(pitch_,2);
     m->yaw    =  gyro.z;
 #endif
 }

@@ -34,7 +34,7 @@
 // Use floating point M_PI instead explicitly.
 #define M_PIf       3.14159265358979323846f
 #define M_EULERf    2.71828182845904523536f
-
+#define ROUND_NUM(x,y) (float)((int)(x*pow(10,y)))/(pow(10,y))
 #define RAD    (M_PIf / 180.0f)
 #define DEGREES_TO_DECIDEGREES(angle) ((angle) * 10)
 #define DECIDEGREES_TO_DEGREES(angle) ((angle) / 10)

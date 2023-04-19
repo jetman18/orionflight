@@ -11,11 +11,12 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 #include "timeclock.h"
 
+
+
 /**
  *@brief  
- *@param  hz       tan so lap
- *@param  timeout 
- *@param  task    
+ *@param  hz  tan so lap
+ *@param  timeout
  */
 #define FEQUENCY_DIV(div,z) if(fequency_division(div,z))
 
@@ -35,6 +36,16 @@ int fequency_division(uint16_t division,int k){
     if(count_%division==0)return 1;
     else if(feq==0)return 0;
     return 0;
+}
+static uint64_t time_1;
+void sch_Start(){
+	time_1 = micros();
+}
+int total_ps_time(uint32_t dt){
+	if((micros() - time_1)>dt){
+		return 0;
+	}
+	return 1;
 }
 
 #ifdef __cplusplus

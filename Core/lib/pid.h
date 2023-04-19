@@ -21,7 +21,7 @@ typedef struct{
 	float f_cut_D;
 }pid__t;
 uint32_t getReadTime();
-void  pidCalculate(pid__t *gain,float sensor,float control,uint16_t delta_time);
+void  pidCalculate(pid__t *gain,float sensor,float control,uint32_t delta_time);
 #ifdef __cplusplus
 }
 #endif
