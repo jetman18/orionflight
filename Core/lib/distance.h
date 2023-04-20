@@ -12,10 +12,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void rs04Callback();
-int getDistance();
+void hc_sr04_callback();
+int hc_sr04_get_dis();
 int isHcNewdata();
-void trige();
+void hc_sr04_send_trige();
 #ifdef __cplusplus
 }
 #endif

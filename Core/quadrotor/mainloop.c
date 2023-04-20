@@ -21,7 +21,7 @@
 #include "opticalflow.h"
 #include "../quadrotor/config.h"
 #include "mavlink_handler.h"
-#define DEFAULT_ALTITUDE 80
+#define BIAS_ALTITUDE 80
 #define GYRO_DELAY 4
 #define MINIMUN_THROTTLE 1030
 #define SYS_ID 1
@@ -40,7 +40,7 @@ static float gyro_yaw,qmc_yaw;
 static void rotate(faxis3_t *vector,faxis3_t delta);
 //BMP280_HandleTypedef bmp280;
 //static float temperature,pressure,altitude;
-/************************************test variab***************/
+/************************************test var***************/
 int accx,accy,accz;
 uint32_t mil;
 axis3_t t;
@@ -53,20 +53,20 @@ uint16_t t1;
 void main_loop(){
 /*----------PARAMETER-init----------------------*/
 	/*------------altitude PID --------*/
-	Pid_altitude_t.kp =0.5;
-	Pid_altitude_t.ki =0.2;
-	Pid_altitude_t.kd =0.55;
-	Pid_altitude_t.max_i = 300;   //
-	Pid_altitude_t.max_pid =300;  //
-	Pid_altitude_t.f_cut_D =6;
+	Pid_altitude_t.kp =0.2f;   //0.5
+	Pid_altitude_t.ki =0.12f;   //0.2
+	Pid_altitude_t.kd =0.2f;  //0.55
+	Pid_altitude_t.max_i = 300.0f;   //
+	Pid_altitude_t.max_pid =300.0f;  //
+	Pid_altitude_t.f_cut_D =30.0f;
 
     /*-----------angle PID------------*/
 	Pid_angle_pitch_t.kp =1.2f;
 	Pid_angle_pitch_t.ki =0;
-	Pid_angle_pitch_t.kd =0;
+	Pid_angle_pitch_t.kd =0.01;
 	Pid_angle_pitch_t.max_i = 0;   //
-	Pid_angle_pitch_t.max_pid =120;  //
-	Pid_angle_pitch_t.f_cut_D =200;
+	Pid_angle_pitch_t.max_pid =50;  //
+	Pid_angle_pitch_t.f_cut_D =80;
 
 	Pid_angle_yaw_t.kp =2;
 	Pid_angle_yaw_t.ki =0;//1000
@@ -75,17 +75,17 @@ void main_loop(){
 	Pid_angle_yaw_t.max_pid = 120;
 	Pid_angle_yaw_t.f_cut_D =0;
 
-    /*-------angle velocity PID--*/
-   	Pid_velocity_pitch_t.kp = 2.5;
-	Pid_velocity_pitch_t.ki = 1.6;
+    /*--angle velocity PID--*/
+   	Pid_velocity_pitch_t.kp =2.5;
+	Pid_velocity_pitch_t.ki =1.6;
 	Pid_velocity_pitch_t.kd = 0;
 	Pid_velocity_pitch_t.max_i = 200;
 	Pid_velocity_pitch_t.max_pid = 400;
-	Pid_velocity_pitch_t.f_cut_D =300;
+	Pid_velocity_pitch_t.f_cut_D =100;
 
 	Pid_velocity_yaw_t.kp =3;
 	Pid_velocity_yaw_t.ki =2;
-	Pid_velocity_yaw_t.kd = 0;
+	Pid_velocity_yaw_t.kd =0;
 	Pid_velocity_yaw_t.max_i = 100;
 	Pid_velocity_yaw_t.max_pid = 150;
 	Pid_velocity_yaw_t.f_cut_D =0;
@@ -93,7 +93,7 @@ void main_loop(){
 	const float ch1_scale = 0.3f;
 	const float ch2_scale = 0.3f;
 	//const float ch3_scale = 0.23f;  // -> 200mm/s
-	const float ch4_scale = 0.4f;
+	const float ch4_scale = 0.6f;
     
 	const uint16_t dt = 2000;
 #if 0
@@ -149,50 +149,54 @@ void main_loop(){
 while(1){
 	//static uint8_t quality_;
 	static float k_ =1.0f;
-    static int start_ = 1;
     static float rx_yaw;
-///////////////////////////////////////////////////////////////////////////////////
+/*RX data receive-----*/
     if(ibusFrameComplete()){
 		rx_ch1=ibusReadf(CH1,ch1_scale);
 		rx_ch2=ibusReadf(CH2,ch2_scale);
 		//rx_ch3=ibusReadf(CH3,ch3_scale);
 		throttle=ibusReadRawRC(CH3);
 		ch3_ = throttle;
-		ch3_ -=1000;
+		ch3_ -=1000;// 1000-200 -> 0-1000
+		ch3_ *=1.4;   // altitude  1 - 2 meter
 		ch5=ibusReadRawRC(CH5);
 		rx_ch4=ibusReadf(CH4,ch4_scale);
      }
-
+/*IMU calc--*/
 	imu_update(&quad_,dt);
-	rx_yaw = rx_yaw + rx_ch4*(float)(1e-06f)*dt;
-	gyro_yaw = gyro_yaw - quad_.yaw_velocity*dt*(float)(1e-06f);
+/*HEADING ---*/
+	float temp = (float)(1e-06f)*dt;
+	rx_yaw = rx_yaw + rx_ch4*temp;
+	gyro_yaw = gyro_yaw - quad_.yaw_velocity*temp;
 	if(qmc_get_Heading(&qmc_yaw,quad_.pitch,quad_.roll)){
 	 	gyro_yaw = gyro_yaw + k_*(qmc_yaw - gyro_yaw);
-		if(k_>0.1f){
-			k_ = k_ - 0.01f;
-		}
+		if(k_>0.1)k_ = k_ - 0.01f;
 	}
-///////////////////////////////////////////////////////////////////////////////////////
-	 FEQUENCY_DIV(13,1){
-		  trige();
-		  float ddis = getDistance();
-		  dis = dis + 0.4f*(ddis - dis);
-		  if(quad_.pitch < fabs(10) && quad_.roll < fabs(10)){
-		  if(ch5>1500){
-			  init_th +=100*0.075f;
-		   	  init_th = constrainf(init_th,0,1250);
-			  pidCalculate(&Pid_altitude_t,dis,ch3_ + DEFAULT_ALTITUDE,75000);//ch3_ + DEFAULT_ALTITUDE
-			  Pid_altitude_t.PID *=-1;
-		  }
-		  else{
-			  init_th=1000;
-			  Pid_altitude_t.I=0;
-			  Pid_altitude_t.PID=0;
-		  }
+/*HC-SR04  altitude hoding*/
+FEQUENCY_DIV(12,1){
+	hc_sr04_send_trige();
+	static float last_dis = BIAS_ALTITUDE;
+	float ddis = hc_sr04_get_dis();
+	ddis = future_constrainf(last_dis,ddis,-10,10);
+	last_dis = ddis;
+	dis = dis + 0.9f*(ddis - dis);
+	dis = dis*cos_approx(DEGREES_TO_RADIANS(quad_.pitch))*cos_approx(DEGREES_TO_RADIANS(quad_.roll));
+	//if((quad_.pitch < fabs(10)) && (quad_.roll < fabs(10))){
+		if(ch5>1600){
+			init_th +=100*0.024f; //0.024 (s)
+			init_th = constrainf(init_th,0,1200);
+			pidCalculate(&Pid_altitude_t,dis,ch3_ + BIAS_ALTITUDE,24000);
+			Pid_altitude_t.PID *=-1;
+			t1 =init_th + Pid_altitude_t.PID;
+		}else{
+			t1 = throttle;
+			init_th=1000;
+			Pid_altitude_t.I=0;
+			Pid_altitude_t.PID=0;
 		}
-   }
-///////////////////////////////////////////////////////////////////////////////////////
-	/*optical flow  25hz*/
+}
+
+/*optical flow  25hz*/
 #if 0
 	 FEQUENCY_DIV(20,ENABLE){
 			static float gyro_x,sub_x,gyro_y,sub_y;
@@ -225,76 +229,64 @@ while(1){
             }
 	    }
 #endif  
-	   /*Pid */
-		if(start_ && throttle>MINIMUN_THROTTLE){
-			//angle
-			pidCalculate(&Pid_angle_pitch_t,quad_.pitch,rx_ch2,dt);//rx_ch2
-			pidCalculate(&Pid_angle_roll_t ,quad_.roll,rx_ch1,dt);//rx_ch1
-			pidCalculate(&Pid_angle_yaw_t,gyro_yaw,rx_yaw,dt);
-			//velocity
-			pidCalculate(&Pid_velocity_pitch_t,quad_.pitch_velocity,Pid_angle_pitch_t.PID,dt);
-			pidCalculate(&Pid_velocity_roll_t,quad_.roll_velocity,-Pid_angle_roll_t.PID,dt);
-			pidCalculate(&Pid_velocity_yaw_t ,quad_.yaw_velocity,Pid_angle_yaw_t.PID,dt);
+if(throttle>MINIMUN_THROTTLE){
+	//angle pid
+	pidCalculate(&Pid_angle_pitch_t,quad_.pitch,rx_ch2,dt);//rx_ch2
+	pidCalculate(&Pid_angle_roll_t ,quad_.roll,rx_ch1,dt);//rx_ch1
+	pidCalculate(&Pid_angle_yaw_t,gyro_yaw,rx_yaw,dt);
+	//velocity pid
+	pidCalculate(&Pid_velocity_pitch_t,quad_.pitch_velocity,Pid_angle_pitch_t.PID,dt);
+	pidCalculate(&Pid_velocity_roll_t,quad_.roll_velocity,-Pid_angle_roll_t.PID,dt);
+	pidCalculate(&Pid_velocity_yaw_t ,quad_.yaw_velocity,Pid_angle_yaw_t.PID,dt);
 
-			if(ch5>1500){
-				t1 =init_th + Pid_altitude_t.PID;
-			}
-			else{
-				t1 = throttle;
-			}
-			moto1 = t1 + Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
-			moto2 = t1 + Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
-			moto3 = t1 - Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
-			moto4 = t1 - Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
+	moto1 = t1 + Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
+	moto2 = t1 + Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
+	moto3 = t1 - Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
+	moto4 = t1 - Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
 
-			writePwm(ch1,moto1);
-			writePwm(ch2,moto2);
-			writePwm(ch3,moto3);
-			writePwm(ch4,moto4);
-		}
-		else{
-			Pid_angle_pitch_t.I=0.0f;
-			Pid_angle_roll_t.I =0.0f;
-			Pid_angle_yaw_t.I  =0.0f;
+	writePwm(ch1,moto1);
+	writePwm(ch2,moto2);
+	writePwm(ch3,moto3);
+	writePwm(ch4,moto4);
+}else{
+	Pid_angle_pitch_t.I=0.0f;
+	Pid_angle_roll_t.I =0.0f;
+	Pid_angle_yaw_t.I  =0.0f;
 
-			Pid_velocity_pitch_t.I=0.0f;
-			Pid_velocity_roll_t.I =0.0f;
-			Pid_velocity_yaw_t.I  =0.0f;
+	Pid_velocity_pitch_t.I=0.0f;
+	Pid_velocity_roll_t.I =0.0f;
+	Pid_velocity_yaw_t.I  =0.0f;
 
-			rx_yaw = gyro_yaw;
+	rx_yaw = gyro_yaw;
+	writePwm(ch1,init_th);
+	writePwm(ch2,init_th);
+	writePwm(ch3,init_th);
+	writePwm(ch4,init_th);
+	//motoIdle();
+	}
+  // motoIdle();
 
-			writePwm(ch1,init_th);
-			writePwm(ch2,init_th);
-			writePwm(ch3,init_th);
-			writePwm(ch4,init_th);
-		   }
-		//motoIdle();
-
-
-/*-------------------------------------------------------------------------------------*/
-	 /*send attitude to pc*/
-	 FEQUENCY_DIV(100,ENABLE){
+/*send attitude to pc*/
+FEQUENCY_DIV(100,ENABLE)
+{
 		  set_altitude = named_value_int_().value;
 		  mav_pack_attitude(quad_.roll,quad_.pitch,gyro_yaw,0,0,0);
           mav_pack_named_value_int("throttle",throttle);
           mavlink_send();
     }
-     /*blink led pb3-pb4 */
-	 FEQUENCY_DIV(250,ENABLE){
-     	 HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_4);
-     }
+    /*blink led pb3-pb4 */
+	FEQUENCY_DIV(250,ENABLE){
+    HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_4);
+}
 	 /*quality check*/
-	 /*
-	FEQUENCY_DIV(100,ENABLE){
-		 if(quality_<100)
-			  HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_3);
-		 else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3,0);
-    }*/
+//FEQUENCY_DIV(100,ENABLE){
+		 //if(quality_<100)
+		//	  HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_3);
+		// else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3,0);
+//}
     looptime(dt);
    }
 }
-
-
 // IQR function
 /*----------------------------------IQR--Handle-----------------------------*/
 
@@ -324,7 +316,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if(GPIO_Pin == GPIO_PIN_8)
     {
-     rs04Callback();
+     hc_sr04_callback();
     }
 }
 
@@ -345,8 +337,6 @@ float storeGyro2(float data){
 	}
 	return  buffe2[0];
 }
-
-
 
 
 void rotate(faxis3_t *vector,faxis3_t delta)
