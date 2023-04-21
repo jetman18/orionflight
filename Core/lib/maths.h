@@ -170,7 +170,7 @@ static inline float constrainf(float amt, float low, float high)
         return amt;
 }
 
-static inline float future_constrainf(float pre_val,float cur_val, float low, float high)
+static inline float p_constrainf(float pre_val,float cur_val, float low, float high)
 {
     if ((cur_val - pre_val) > high)
         return (high + pre_val);

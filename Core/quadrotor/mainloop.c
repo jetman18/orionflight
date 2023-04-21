@@ -177,7 +177,7 @@ FEQUENCY_DIV(12,1){
 	hc_sr04_send_trige();
 	static float last_dis = BIAS_ALTITUDE;
 	float ddis = hc_sr04_get_dis();
-	ddis = future_constrainf(last_dis,ddis,-10,10);
+	ddis = p_constrainf(last_dis,ddis,-10,10);
 	last_dis = ddis;
 	dis = dis + 0.9f*(ddis - dis);
 	dis = dis*cos_approx(DEGREES_TO_RADIANS(quad_.pitch))*cos_approx(DEGREES_TO_RADIANS(quad_.roll));
