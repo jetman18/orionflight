@@ -11,12 +11,18 @@
 #include "math.h"
 #include "lpf.h"
 #include "timeclock.h"
-
+#include "imu.h"
+extern imu_config_t config;
+extern attitude_t quad_;
+float gyro_yaw;
+static float k_ =1.0f;
 int16_t calib_axi[3];
 int16_t maxval[] = {0,0,0};
 const int16_t  calibrate_xyz[3]={-93,81,400};
 const uint8_t qmc_addres = (0x0d<<1);
 I2C_HandleTypeDef *qmc_i2cport;
+extern float rx_ch4;
+float heading;
 
 float combined_bias[3]={130.445,78.9098,-129.84};
 
@@ -34,13 +40,13 @@ void qmc5883_init(I2C_HandleTypeDef *i2cport){
     buf[1]=0X1D;
     HAL_I2C_Master_Transmit(qmc_i2cport,qmc_addres,buf,2, 1);
 }
-
-void qmc_get(axis3_t *t,float pitch,float roll){
+axis3_t tt;
+void qmc_get_raw(){
 	  uint8_t buf[6]={0};
 	  HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
-	  t->x=((int16_t)buf[1]<<8|buf[0]) ;
-	  t->y=((int16_t)buf[3]<<8|buf[2]);
-	  t->z=((int16_t)buf[5]<<8|buf[4]);
+	  tt.x=((int16_t)buf[1]<<8|buf[0]) ;
+	  tt.y=((int16_t)buf[3]<<8|buf[2]);
+	  tt.z=((int16_t)buf[5]<<8|buf[4]);
 
 	  /*
 	  pitch  *= 0.01745f;
@@ -58,15 +64,15 @@ void qmc_get(axis3_t *t,float pitch,float roll){
 */
 }
 
-
-int qmc_get_Heading(float *heading,float pitch,float roll){
+static int qmc_get_Heading(){
 	static uint8_t count_mag=0;
 	static int16_t mx,my,mz;
-	static int16_t offset_mx = -230;
-	static int16_t offset_my = -200;
-	static int16_t offset_mz = 0;
+	static int16_t offset_mx = 170;
+	static int16_t offset_my = 85;
+	static int16_t offset_mz = -10;
 	static float sum_=0,offset1 =0,offset2=0;
     static float heading_;
+    float cosP,sinP,cosR,sinR;
 	uint8_t buf[2];
       switch(count_mag){
       	  case 0:
@@ -88,13 +94,11 @@ int qmc_get_Heading(float *heading,float pitch,float roll){
             return 0;
 
       	  case 3:
-      		pitch  *= 0.01745f;
-      		roll   *= 0.01745f;
-      		float cosP = cos_approx(pitch);
-			float sinP = sin_approx(pitch);
+      		cosP = cos_approx(quad_.pitch*RAD);
+			sinP = sin_approx(quad_.pitch*RAD);
  
-		    float cosR = cos_approx(roll);
-      		float sinR = sin_approx(roll);
+		    cosR = cos_approx(quad_.roll*RAD);
+      		sinR = sin_approx(quad_.roll*RAD);
 
             float m_x = mx*cosP - mz*sinP;
             float m_y = mx*sinP*sinR + my*cosR - mz*cosP*sinR;
@@ -104,8 +108,7 @@ int qmc_get_Heading(float *heading,float pitch,float roll){
             offset2 = heading_ - offset1;
             if(offset2<-340)sum_ +=360;
             else if(offset2>340)sum_ -=360;
-      		*heading = heading_ + sum_;
-
+      		heading = heading_ + sum_;
       		count_mag =0;
       		return 1;
       }
@@ -143,5 +146,13 @@ void magnet_sensor_calibrate(){
 		}
 	}
 
+}
+void compass_get_heading_(){
+	float temp = (float)(1e-06f)*config.dt;
+	gyro_yaw = gyro_yaw - quad_.yaw_velocity*temp;
+	if(qmc_get_Heading()){
+	 	gyro_yaw = gyro_yaw + k_*(heading - gyro_yaw);
+		if(k_>0.01)k_ = k_ - 0.005f;
+	}
 }
 //------------------------------------------------

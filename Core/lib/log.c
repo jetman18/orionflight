@@ -64,6 +64,7 @@ int write_int(UART_HandleTypeDef *huart,int x)
         sig = 1;
     }
    int len = intToStr(x,str_,0);
-   HAL_UART_Transmit(huart,str_,len,100);
+   str_[len] = '\n';
+   HAL_UART_Transmit(huart,str_,len+1,2);
    return len;
 }

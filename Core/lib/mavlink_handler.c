@@ -1,6 +1,9 @@
 #include"mavlink_handler.h"
 #include "timeclock.h"
+#include "imu.h"
 #define MAX_LENGHT 100
+
+extern attitude_t quad_;
 static mavlink_named_value_int_t  val_int;
 static mavlink_named_value_float_t  val_float;
 static mavlink_attitude_t attitude;
@@ -40,70 +43,21 @@ void mavlinkCallback(){
     }
     HAL_UART_Receive_IT(uart, &data,1);
 }
-mavlink_attitude_t get_attitude_()
-{
-    return attitude;
-}
 
-mavlink_named_value_int_t named_value_int_()
-{
-    return val_int;
-}
-mavlink_named_value_float_t named_value_float_()
-{
-    return val_float;
-}
-
-int mav_pack_attitude(float roll,float pitch ,float yaw, float rollspeed, float pitchspeed, float yawspeed)
-{
-	if(isTxcpl){
-	   uint32_t boot_time = millis();
-	   mavlink_message_t msg_send;
-	   mavlink_msg_attitude_pack(sys_id,com_id,&msg_send,boot_time,roll,pitch,yaw,rollspeed,pitchspeed,yawspeed);
-	   int len = mavlink_msg_to_send_buffer((uint8_t *)&buffer[index_],&msg_send);
-	   index_ +=len;
-	}
-   //HAL_UART_Transmit_DMA(uart,buffer,len);
-   return index_;
-
-}
-
-int mav_pack_named_value_int(char* strr,int val)
-{
-  if(isTxcpl){
-	   uint32_t boot_time = millis();
-	   mavlink_message_t msg_send;
-	   mavlink_msg_named_value_int_pack(sys_id,com_id,&msg_send,boot_time,(const char *)strr,val);
-	   int len = mavlink_msg_to_send_buffer((uint8_t *)&buffer[index_],&msg_send);
-	   //HAL_UART_Transmit_DMA(uart,buffer,len);
-	   index_ +=len;
-   }
-   return index_;
-}
-
-int mav_pack_named_value_float(char* strr,float val)
-  {
-	if(isTxcpl){
-	   uint32_t boot_time = millis();
-	   mavlink_message_t msg_send;
-	   mavlink_msg_named_value_float_pack(sys_id,com_id,&msg_send,boot_time,(const char *)strr,val);
-	   int len = mavlink_msg_to_send_buffer((uint8_t *)&buffer[index_],&msg_send);
-	   //HAL_UART_Transmit_DMA(uart,buffer,len);
-
-	   index_ +=len;
-	}
-   return index_;
-}
+char *name ="roll";
 void mavlink_send(){
 	if(isTxcpl){
-	if(index_>MAX_LENGHT)index_ = MAX_LENGHT;
-	HAL_UART_Transmit_DMA(uart,buffer,index_);
-	index_ =0;
-	isTxcpl = 0;
+		uint32_t boot_time = millis();
+		mavlink_message_t msg_send;
+		mavlink_msg_named_value_float_pack(sys_id,com_id,&msg_send,boot_time,(const char *)name,quad_.roll);
+		int len = mavlink_msg_to_send_buffer((uint8_t *)&buffer[index_],&msg_send);
+		HAL_UART_Transmit_DMA(uart,buffer,len);
+		isTxcpl = 0;
 	}
 }
 
-void mav_tx_cpl_callback(){
+void mav_tx_cpl_callback()
+{
 	isTxcpl = 1;
 }
 

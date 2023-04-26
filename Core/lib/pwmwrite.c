@@ -1,11 +1,13 @@
 #include "pwmwrite.h"
 #include "tim.h"
 #include "maths.h"
-
+#include "pid.h"
 
 #define PWM_RELOAD_AFFTER 2200     // 2200 US
 #define ONESHOT_RELOAD_AFFTER 400  //400 US  2500HZ
 
+
+extern uint16_t moto1,moto2,moto3,moto4;
 
 /**timer pwm
  *
@@ -45,6 +47,18 @@ void motoIdle(){
 	__HAL_TIM_SetCompare (htimm,ch3,1000);
 	__HAL_TIM_SetCompare (htimm,ch4,1000);
 }
+void pwm2esc(){
+	moto1 = constrain(moto1,1000,2000);
+	__HAL_TIM_SetCompare (htimm,ch1,moto1);
 
+	moto2 = constrain(moto2,1000,2000);
+	__HAL_TIM_SetCompare (htimm,ch2,moto2);
+
+	moto3 = constrain(moto3,1000,2000);
+	__HAL_TIM_SetCompare (htimm,ch3,moto3);
+
+	moto4 = constrain(moto4,1000,2000);
+	__HAL_TIM_SetCompare (htimm,ch4,moto4);
+};
 
 

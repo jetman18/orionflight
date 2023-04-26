@@ -19,6 +19,7 @@ void initOneshot125(TIM_HandleTypeDef *htim);
 void motoIdle();
 void writePwm(uint32_t Channel,int16_t dulty);
 void writeOneshot125(uint32_t Channel,int16_t dulty);
+void pwm2esc();
 #ifdef __cplusplus
 }
 #endif

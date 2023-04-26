@@ -20,8 +20,8 @@ typedef struct{
 	float max_pid;
 	float f_cut_D;
 }pid__t;
-uint32_t getReadTime();
-void  pidCalculate(pid__t *gain,float sensor,float control,uint32_t delta_time);
+void pidUpdate();
+void PID_init_param();
 #ifdef __cplusplus
 }
 #endif

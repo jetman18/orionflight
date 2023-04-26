@@ -24,7 +24,7 @@ enum index{
 	CH7,
 	CH8
 };
-
+void ibusGet();
 int ibusFrameComplete(void);
 void ibusDataReceive(uint16_t c);
 uint16_t ibusReadRawRC(uint8_t chan);

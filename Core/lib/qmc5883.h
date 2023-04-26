@@ -17,8 +17,8 @@ typedef struct{
 }MAG_t;
 void qmc5883_init(I2C_HandleTypeDef *i2cport);
 void magnet_sensor_calibrate();
-int qmc_get_Heading(float *heading,float pitch,float roll);  //degre*10
-void qmc_get(axis3_t *t,float pitch,float roll);
+void qmc_get_raw();
+void compass_get_heading_();
 #ifdef __cplusplus
 }
 #endif

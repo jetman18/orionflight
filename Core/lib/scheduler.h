@@ -23,7 +23,7 @@ extern "C" {
 static uint16_t count_=1;
 static uint16_t feq=0;
 static uint64_t time1 =0;
-void looptime(uint32_t us)
+void loop_start(uint32_t us)
 {
 	feq = 1/(us*0.000001);
 	if(count_ >= feq)count_=1;

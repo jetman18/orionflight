@@ -1,5 +1,5 @@
 #include <log.h>
-#include "mpu6500.h"
+#include "imu.h"
 #include "stm32f1xx_hal.h"
 #include "maths.h"
 #include "i2c.h"
@@ -8,25 +8,44 @@
 #include "timeclock.h"
 #include "axis.h"
 #include "../quadrotor/config.h"
-/*hel*/
-const float gain_cp =0.0002f;
-const float f_cut = 150.0f;
-#define LSB_gyr  32.8f
 #define I2C
 //#define SPI
 #define ACCSMOOTH
-
+typedef enum{
+    GYRO_250 = 0,
+    GYRO_500,
+    GYRO_1000,
+    GYRO_2000
+}GYRO_SCALE_;
+typedef enum{
+    ACC_2G = 0,
+    ACC_4G,
+    ACC_8G,
+    ACC_16G
+}ACC_SCALE_;
+imu_config_t config;
 static int16_t  acc__[3];
 static int16_t gyr_offs_x, gyr_offs_y, gyr_offs_z;
-static float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
-//static SPI_HandleTypeDef mpu_spi_port;
+float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
 static I2C_HandleTypeDef *mpu_i2cport;
-//static GPIO_TypeDef *mpu_gpio_port = NULL;
-//static uint16_t mpu_cs_pin;
+static faxis3_t vect = {0,0,1};
+attitude_t quad_;
 
-static faxis3_t vect = {0,0,1}; // x y z
-static const uint8_t mpu_address =(0x68<<1);
-
+static void pre_config(){
+	config.dt = 2000;   //2000us
+	config.acc_f_cut = 100;
+	config.gyro_f_cut =100;
+	config.cpl_gain = 0.001f;
+	config.imu_adrr = (0x68<<1);
+	config.offset_cycle =1000;
+	config.imu_acc_data_res = ACC_DATA_REG;
+	config.imu_gyro_data_res = GYRO_DATA_REG;
+    config.imu_gyro_regsiter_config = 0x1b;
+	config.imu_acc_regsiter_config = 0x1c;
+	config.imu_acc_res_cgf_val  = (ACC_4G<<3);
+	config.imu_gyro_res_cgf_val = (GYRO_1000<<3);
+	config.imu_gyro_Sensitivity_Scale_Factor = 32.8f;
+}
 void normalizeV(axis3_t *src)
 {
     int32_t sum;
@@ -39,14 +58,13 @@ void normalizeV(axis3_t *src)
     }
 }
 
-static int mpu_read_gyro(axis3_t *k){
+static int gyro_read_raw(axis3_t *k){
 	  axis3_t p_val =*k;
 	  uint8_t buffe[6];
-	  buffe[0]= 0x43;// gyro address
+	  buffe[0]=config.imu_gyro_data_res;
 #ifdef I2C
-	  HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffe,1,100);
-	  HAL_I2C_Master_Receive(mpu_i2cport,mpu_address,buffe,6,100);
-
+	  HAL_I2C_Master_Transmit(mpu_i2cport,config.imu_adrr,buffe,1,1);
+	  HAL_I2C_Master_Receive(mpu_i2cport,config.imu_adrr,buffe,6,1);
 #endif
 #ifdef SPI
 	  buffe[0] |=0x80;
@@ -60,24 +78,24 @@ static int mpu_read_gyro(axis3_t *k){
 	  k->y = (int16_t)buffe[2]<<8|buffe[3];
 	  k->z = (int16_t)buffe[4]<<8|buffe[5];
 
-	  if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z)){
+	  if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z))
+	  {
 		return 1;
 	  }
 	  return 0;
-
 	}
 
 int16_t get_acc(int axis){
      return acc__[axis];
 }
 
-static int mpu_read_acc(axis3_t *k){
+static int acc_read_raw(axis3_t *k){
 	axis3_t p_val =*k;
-	  uint8_t buffe[6];
-	  buffe[0] = 0x3b;// acc address
+	uint8_t buffe[6];
+	buffe[0] =config.imu_acc_data_res;// acc address
 #ifdef I2C
-	  HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffe,1,100);
-	  HAL_I2C_Master_Receive(mpu_i2cport,mpu_address,buffe,6,100);
+	  HAL_I2C_Master_Transmit(mpu_i2cport,config.imu_adrr,buffe,1,100);
+	  HAL_I2C_Master_Receive(mpu_i2cport,config.imu_adrr,buffe,6,100);
 #endif
 #ifdef SPI
 	  buffe[0] |=0x80;
@@ -108,22 +126,22 @@ static void get_offset(){
 	uint16_t k1 = 0;
 	uint16_t k2 = 0;
 
-	for(int i=0;i<2000;i++){
+	for(int i=0;i<config.offset_cycle;i++){
 		// gyro
-		if(!mpu_read_gyro(&gyro_)){
+		if(!gyro_read_raw(&gyro_)){
 			k1++;
 			contan_gyro[X] += gyro_.x;
 	    	contan_gyro[Y] += gyro_.y;
 	    	contan_gyro[Z] += gyro_.z;
 		}
         // acc
-		if(!mpu_read_acc(&acc_)){
+		if(!acc_read_raw(&acc_)){
 			k2++;
 			contan_acc[X] += acc_.x;
 	        contan_acc[Y] += acc_.y;
 	        contan_acc[Z] += acc_.z;
 		}
-	    HAL_Delay(1);
+		delay_ms(1);
 	}
 
     if(k1 != 0){
@@ -148,12 +166,10 @@ static void get_offset(){
 			vect.z = acc_vect_offs_z;
 		}
     }
-
-    //fail to read mpu
     if((k1 == 0) && (k2 == 0)){
     	while(1){
     		HAL_Delay(1000);
-    		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+    		//HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
 
     	}
     }
@@ -190,42 +206,56 @@ void MPU_spi_init(SPI_HandleTypeDef *spiportt,GPIO_TypeDef  *gpio_port,uint16_t 
 void MPU_i2c_init(I2C_HandleTypeDef *i2cport){
 	uint8_t buffer[6];
 	mpu_i2cport = i2cport;
+    pre_config();
+    buffer[0] = 0x6b; 
+  	buffer[1] =  RESET_REG;
+  	HAL_I2C_Master_Transmit(mpu_i2cport,config.imu_adrr,buffer,2,1);
 
-    buffer[0] = 0x6B; // Send request to the register you want to access
-  	buffer[1] = 0x00; // Set the requested register
-  	HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffer,2,100);
-  	// Configure gyro(500dps full scale)
-  	buffer[0] = 0x1B;  // Send request to the register you want to access
-  	buffer[1] = 0x10;  // Set the requested register
-  	HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffer,2,100);
-  	// Configure accelerometer(+/- 8g)
-  	buffer[0] = 0x1C;  // Send request to the register you want to access
-  	buffer[1] = 0x00;  // Set the requested register
-  	HAL_I2C_Master_Transmit(mpu_i2cport,mpu_address,buffer,2,100);
+  	buffer[0] = config.imu_gyro_regsiter_config; 
+  	buffer[1] = config.imu_gyro_res_cgf_val; 
+  	HAL_I2C_Master_Transmit(mpu_i2cport,config.imu_adrr,buffer,2,1);
+
+  	buffer[0] = config.imu_acc_regsiter_config; 
+  	buffer[1] = config.imu_acc_res_cgf_val;  
+  	HAL_I2C_Master_Transmit(mpu_i2cport,config.imu_adrr,buffer,2,1);
   	get_offset();
 }
 
 static void gyro_read(faxis3_t *angle){
 	axis3_t p;
-	if(mpu_read_gyro(&p)){
+	static float gyro_v[3];
+	if(gyro_read_raw(&p)){
 		return;
 	}
-	angle->x  = ((float)(p.x - gyr_offs_x))/LSB_gyr;
-	angle->y  = ((float)(p.y - gyr_offs_y))/LSB_gyr;
-	angle->z  = ((float)(p.z - gyr_offs_z))/LSB_gyr;
+	float RC = 1.0f / (2 *M_PIf *config.gyro_f_cut);
+    float temp = (float)config.dt*(1e-06f);
+	float gain_lpf =temp / (RC + temp);
+
+	float x_  = ((float)(p.x - gyr_offs_x))/config.imu_gyro_Sensitivity_Scale_Factor;
+	float y_ = ((float)(p.y - gyr_offs_y))/config.imu_gyro_Sensitivity_Scale_Factor;
+	float z_  = ((float)(p.z - gyr_offs_z))/config.imu_gyro_Sensitivity_Scale_Factor;
+
+    gyro_v[X] = gyro_v[X] + gain_lpf*(x_ - gyro_v[X]);
+    gyro_v[Y] = gyro_v[Y] + gain_lpf*(y_ - gyro_v[Y]);
+    gyro_v[Z] = gyro_v[Z] + gain_lpf*(z_ - gyro_v[Z]);
+
+    angle->x = gyro_v[X];
+    angle->y = gyro_v[Y];
+    angle->z = gyro_v[Z];
+
 }
 
-static void rotateV(faxis3_t *vector,faxis3_t delta,uint16_t dt)
+static void rotateV(faxis3_t *vector,faxis3_t delta)
 {
     float mat[3][3];
     float cosx, sinx, cosy, siny, cosz, sinz;
     float coszcosx, sinzcosx, coszsinx, sinzsinx;
 	faxis3_t vec;
     
-	float toRaddt = dt*(float)(1e-06f)*0.01745f;
-	float angleX = delta.x*toRaddt;
-	float angleY = delta.y*toRaddt;
-	float angleZ = delta.z*toRaddt;
+	float temp = config.dt*(float)(1e-06f)*RAD;
+	float angleX = delta.x*temp;
+	float angleY = delta.y*temp;
+	float angleZ = delta.z*temp;
 
     cosx = cos_approx(angleX);
     sinx = sin_approx(angleX);
@@ -269,16 +299,12 @@ static float invSqrt_(float x)
 	//y = y * (1.5f - (halfx * y * y));
 	return y;
 }
-void get_AccAngle(attitude_t *m){
+void get_Acc_Angle(attitude_t *m){
 	axis3_t  acce;
 	faxis3_t acc;
 	uint32_t sum;
 	float length;
-
-    mpu_read_acc(&acce);
-    m->pitch = acce.x;
-	m->roll  = acce.y;
-    /*
+    acc_read_raw(&acce);
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
 	if(sum == 0){
 		return;
@@ -289,23 +315,23 @@ void get_AccAngle(attitude_t *m){
     acc.z = acce.z*length;
 	m->pitch  = atan2_approx(acc.y,acc.z)*180/M_PIf;
 	m->roll   = atan2_approx(-acc.x, (1/invSqrt_(acc.y * acc.y + acc.z * acc.z)))*180/M_PIf;
-   */
+
 }
 static axis3_t  acce;
 static faxis3_t accSmooth;
-void imu_update(attitude_t *m,uint16_t dt){
+void imu_update(){
 	faxis3_t gyro,acc;
 	uint32_t sum;
 	float length;
     gyro_read(&gyro);
-    m->pitch_velocity = gyro.y;
-	m->roll_velocity  = gyro.x;
-	m->yaw_velocity   = gyro.z;
-	rotateV(&vect,gyro,dt);
-    //vect.x = ROUND_NUM(vect.x,2);
-	//vect.y = ROUND_NUM(vect.y,2);
-	//vect.z = ROUND_NUM(vect.z,2);
-    mpu_read_acc(&acce);
+    quad_.pitch_velocity = gyro.y;
+	quad_.roll_velocity  = gyro.x;
+	quad_.yaw_velocity   = gyro.z;
+	rotateV(&vect,gyro);
+    acc_read_raw(&acce);
+    quad_.raw_acc_x = acce.x;
+    quad_.raw_acc_y = acce.y;
+    quad_.raw_acc_z = acce.z;
 	sum = acce.x*acce.x + acce.y*acce.y + acce.z*acce.z;
 	if(sum == 0){
 		return;
@@ -316,12 +342,12 @@ void imu_update(attitude_t *m,uint16_t dt){
     acc.z = acce.z*length;
 
 #ifdef ACCSMOOTH
-	float RC = 1.0f / (2 *M_PIf * f_cut);
-	float gain_lpf =(float)dt*0.000001f / (RC + dt*0.000001f);
+	float RC = 1.0f / (2 *M_PIf *config.acc_f_cut);
+	float gain_lpf =(float)config.dt*(1e-06f) / (RC + config.dt*(1e-06f));
 	
-    accSmooth.x += gain_lpf*(acc.x-accSmooth.x);
-	accSmooth.y += gain_lpf*(acc.y-accSmooth.y);
-	accSmooth.z += gain_lpf*(acc.z-accSmooth.z);
+    accSmooth.x =accSmooth.x + gain_lpf*(acc.x-accSmooth.x);
+	accSmooth.y =accSmooth.y + gain_lpf*(acc.y-accSmooth.y);
+	accSmooth.z =accSmooth.z + gain_lpf*(acc.z-accSmooth.z);
 #else
     accSmooth.x = acc.x;
 	accSmooth.y = acc.y;
@@ -329,30 +355,24 @@ void imu_update(attitude_t *m,uint16_t dt){
 #endif
 
     //complimentary filter
-    vect.x = vect.x + gain_cp*(accSmooth.x - vect.x);
-    vect.y = vect.y + gain_cp*(accSmooth.y - vect.y);
-    vect.z = vect.z + gain_cp*(accSmooth.z - vect.z);
+    vect.x = vect.x + config.cpl_gain*(accSmooth.x - vect.x);
+    vect.y = vect.y + config.cpl_gain*(accSmooth.y - vect.y);
+    vect.z = vect.z + config.cpl_gain*(accSmooth.z - vect.z);
 
-	//*calculate angles
+	//--calculate angles
 #ifdef SPI
-	m->pitch  = atan2_approx(vect.y,vect.z)*180/M_PIf;
-    m->roll   = atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
-    m->yaw    = gyro.z*1000;
+	quad_->pitch  = atan2_approx(vect.y,vect.z)*180/M_PIf;
+    quad_->roll   = atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
+    quad_->yaw    = gyro.z*1000;
 #endif
 
 #ifdef I2C
 	float roll_   =  atan2_approx(vect.y,vect.z)*180/M_PIf;
 	float pitch_  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
-	m->roll = ROUND_NUM(roll_,2);
-    m->pitch  = ROUND_NUM(pitch_,2);
-    m->yaw    =  gyro.z;
+	quad_.roll   =  roll_;//ROUND_NUM(roll_,2);
+    quad_.pitch  =  pitch_;//ROUND_NUM(pitch_,2);
+    quad_.yaw    =  gyro.z;
 #endif
-}
-
-void IMUresetVector(){
-	vect.x = accSmooth.x;
-	vect.y = accSmooth.y;
-	vect.z = accSmooth.z;
 }
 
 

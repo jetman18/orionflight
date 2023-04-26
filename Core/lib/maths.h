@@ -170,7 +170,16 @@ static inline float constrainf(float amt, float low, float high)
         return amt;
 }
 
-static inline float p_constrainf(float pre_val,float cur_val, float low, float high)
+static inline float ef_constrainf(float pre_val,float cur_val, float low, float high)
+{
+    if ((cur_val - pre_val) > high)
+        return (high + pre_val);
+    else if ((cur_val - pre_val) < low)
+        return (low  + pre_val);
+    else
+        return  cur_val;
+}
+static inline int ei_constrainf(int pre_val,int cur_val,int low,int high)
 {
     if ((cur_val - pre_val) > high)
         return (high + pre_val);

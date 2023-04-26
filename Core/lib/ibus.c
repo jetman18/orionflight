@@ -8,27 +8,47 @@
 #include "ibus.h"
 #include "timeclock.h"
 #include "usart.h"
+#include "imu.h"
 #define IBUS_BUFFSIZE 32
 #define IBUS_MAX_CHANNEL 8
 #define IBUS_SYNCBYTE 0x20
 #define false 0
 #define true 1
-
+extern imu_config_t config;
+float  rx_ch1,rx_ch2,rx_ch4;
+uint16_t throttle,ch5,ch3_;
 static int ibusFrameDone = false;
 static uint32_t ibusChannelData[IBUS_MAX_CHANNEL];
 static uint8_t ibus[IBUS_BUFFSIZE] = { 0, };
 static uint8_t rx_buff;
 static UART_HandleTypeDef *uart;
-
+float rx_yaw;
 static uint32_t p_time,delta_t;
-
+const float ch1_scale = 0.3f;
+const float ch2_scale = 0.3f;
+//const float ch3_scale = 0.23f;  // -> 200mm/s
+const float ch4_scale = 0.3f;
 void ibusInit(UART_HandleTypeDef *uartt,uint32_t baudrate){
 	uart = uartt;
     uartt->Init.BaudRate = baudrate;
 	HAL_UART_Init(uartt); //reInit
 	HAL_UART_Receive_IT(uart, &rx_buff,1);
 }
-
+void ibusGet(){
+	float temp = (float)(1e-06f)*config.dt;
+	rx_yaw = rx_yaw + rx_ch4*temp;
+    if(ibusFrameComplete()){
+		rx_ch1=ibusReadf(CH1,ch1_scale);
+		rx_ch2=ibusReadf(CH2,ch2_scale);
+		//rx_ch3=ibusReadf(CH3,ch3_scale);
+		throttle=ibusReadRawRC(CH3);
+		ch3_ = throttle;
+		ch3_ -=1000;// 1000-200 -> 0-1000
+		ch3_ *=2;   // altitude  1 - 2 meter
+		ch5=ibusReadRawRC(CH5);
+		rx_ch4=ibusReadf(CH4,ch4_scale);
+     }
+}
 // Receive ISR callback
 void ibusDataReceive(uint16_t c)
 {
