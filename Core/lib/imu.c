@@ -4,13 +4,19 @@
 #include "maths.h"
 #include "i2c.h"
 #include "math.h"
-#include "lpf.h"
-#include "timeclock.h"
+#include "filter.h"
+#include "scheduler.h"
 #include "axis.h"
 #include "../quadrotor/config.h"
 #define I2C
 //#define SPI
 #define ACCSMOOTH
+#define GYRO_DATA_REG 0x43
+#define ACC_DATA_REG  0x3b
+#define IMU_DEV_REG   0x68
+#define RESET_REG     0x00
+
+
 typedef enum{
     GYRO_250 = 0,
     GYRO_500,
@@ -31,10 +37,17 @@ static I2C_HandleTypeDef *mpu_i2cport;
 static faxis3_t vect = {0,0,1};
 attitude_t quad_;
 
-static void pre_config(){
+/*@ config imu
+ *@
+ *@
+ */
+static void pre_config()
+{
 	config.dt = 2000;   //2000us
 	config.acc_f_cut = 100;
 	config.gyro_f_cut =100;
+    config.acc_slew_threshold=0;//
+	config.gyro_slew_threshold=0;// deg/sec
 	config.cpl_gain = 0.001f;
 	config.imu_adrr = (0x68<<1);
 	config.offset_cycle =1000;
@@ -84,10 +97,6 @@ static int gyro_read_raw(axis3_t *k){
 	  }
 	  return 0;
 	}
-
-int16_t get_acc(int axis){
-     return acc__[axis];
-}
 
 static int acc_read_raw(axis3_t *k){
 	axis3_t p_val =*k;

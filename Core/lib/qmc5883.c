@@ -9,8 +9,8 @@
 #include "maths.h"
 #include "i2c.h"
 #include "math.h"
-#include "lpf.h"
-#include "timeclock.h"
+#include "filter.h"
+#include "scheduler.h"
 #include "imu.h"
 extern imu_config_t config;
 extern attitude_t quad_;

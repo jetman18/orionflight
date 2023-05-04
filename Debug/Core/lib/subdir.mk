@@ -6,10 +6,11 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../Core/lib/bmp280.c \
-../Core/lib/distance.c \
 ../Core/lib/gps.c \
+../Core/lib/hc_sr04.c \
 ../Core/lib/ibus.c \
 ../Core/lib/imu.c \
+../Core/lib/kalman.c \
 ../Core/lib/log.c \
 ../Core/lib/maths.c \
 ../Core/lib/mavlink_handler.c \
@@ -18,14 +19,15 @@ C_SRCS += \
 ../Core/lib/ppmreceiver.c \
 ../Core/lib/pwmwrite.c \
 ../Core/lib/qmc5883.c \
-../Core/lib/timeclock.c 
+../Core/lib/scheduler.c 
 
 OBJS += \
 ./Core/lib/bmp280.o \
-./Core/lib/distance.o \
 ./Core/lib/gps.o \
+./Core/lib/hc_sr04.o \
 ./Core/lib/ibus.o \
 ./Core/lib/imu.o \
+./Core/lib/kalman.o \
 ./Core/lib/log.o \
 ./Core/lib/maths.o \
 ./Core/lib/mavlink_handler.o \
@@ -34,14 +36,15 @@ OBJS += \
 ./Core/lib/ppmreceiver.o \
 ./Core/lib/pwmwrite.o \
 ./Core/lib/qmc5883.o \
-./Core/lib/timeclock.o 
+./Core/lib/scheduler.o 
 
 C_DEPS += \
 ./Core/lib/bmp280.d \
-./Core/lib/distance.d \
 ./Core/lib/gps.d \
+./Core/lib/hc_sr04.d \
 ./Core/lib/ibus.d \
 ./Core/lib/imu.d \
+./Core/lib/kalman.d \
 ./Core/lib/log.d \
 ./Core/lib/maths.d \
 ./Core/lib/mavlink_handler.d \
@@ -50,7 +53,7 @@ C_DEPS += \
 ./Core/lib/ppmreceiver.d \
 ./Core/lib/pwmwrite.d \
 ./Core/lib/qmc5883.d \
-./Core/lib/timeclock.d 
+./Core/lib/scheduler.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -60,7 +63,7 @@ Core/lib/%.o Core/lib/%.su: ../Core/lib/%.c Core/lib/subdir.mk
 clean: clean-Core-2f-lib
 
 clean-Core-2f-lib:
-	-$(RM) ./Core/lib/bmp280.d ./Core/lib/bmp280.o ./Core/lib/bmp280.su ./Core/lib/distance.d ./Core/lib/distance.o ./Core/lib/distance.su ./Core/lib/gps.d ./Core/lib/gps.o ./Core/lib/gps.su ./Core/lib/ibus.d ./Core/lib/ibus.o ./Core/lib/ibus.su ./Core/lib/imu.d ./Core/lib/imu.o ./Core/lib/imu.su ./Core/lib/log.d ./Core/lib/log.o ./Core/lib/log.su ./Core/lib/maths.d ./Core/lib/maths.o ./Core/lib/maths.su ./Core/lib/mavlink_handler.d ./Core/lib/mavlink_handler.o ./Core/lib/mavlink_handler.su ./Core/lib/opticalflow.d ./Core/lib/opticalflow.o ./Core/lib/opticalflow.su ./Core/lib/pid.d ./Core/lib/pid.o ./Core/lib/pid.su ./Core/lib/ppmreceiver.d ./Core/lib/ppmreceiver.o ./Core/lib/ppmreceiver.su ./Core/lib/pwmwrite.d ./Core/lib/pwmwrite.o ./Core/lib/pwmwrite.su ./Core/lib/qmc5883.d ./Core/lib/qmc5883.o ./Core/lib/qmc5883.su ./Core/lib/timeclock.d ./Core/lib/timeclock.o ./Core/lib/timeclock.su
+	-$(RM) ./Core/lib/bmp280.d ./Core/lib/bmp280.o ./Core/lib/bmp280.su ./Core/lib/gps.d ./Core/lib/gps.o ./Core/lib/gps.su ./Core/lib/hc_sr04.d ./Core/lib/hc_sr04.o ./Core/lib/hc_sr04.su ./Core/lib/ibus.d ./Core/lib/ibus.o ./Core/lib/ibus.su ./Core/lib/imu.d ./Core/lib/imu.o ./Core/lib/imu.su ./Core/lib/kalman.d ./Core/lib/kalman.o ./Core/lib/kalman.su ./Core/lib/log.d ./Core/lib/log.o ./Core/lib/log.su ./Core/lib/maths.d ./Core/lib/maths.o ./Core/lib/maths.su ./Core/lib/mavlink_handler.d ./Core/lib/mavlink_handler.o ./Core/lib/mavlink_handler.su ./Core/lib/opticalflow.d ./Core/lib/opticalflow.o ./Core/lib/opticalflow.su ./Core/lib/pid.d ./Core/lib/pid.o ./Core/lib/pid.su ./Core/lib/ppmreceiver.d ./Core/lib/ppmreceiver.o ./Core/lib/ppmreceiver.su ./Core/lib/pwmwrite.d ./Core/lib/pwmwrite.o ./Core/lib/pwmwrite.su ./Core/lib/qmc5883.d ./Core/lib/qmc5883.o ./Core/lib/qmc5883.su ./Core/lib/scheduler.d ./Core/lib/scheduler.o ./Core/lib/scheduler.su
 
 .PHONY: clean-Core-2f-lib
 

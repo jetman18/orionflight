@@ -179,7 +179,7 @@ static inline float ef_constrainf(float pre_val,float cur_val, float low, float 
     else
         return  cur_val;
 }
-static inline int ei_constrainf(int pre_val,int cur_val,int low,int high)
+static inline int val_change_limiter(int pre_val,int cur_val,int low,int high)
 {
     if ((cur_val - pre_val) > high)
         return (high + pre_val);

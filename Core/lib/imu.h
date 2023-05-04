@@ -6,10 +6,6 @@ extern "C" {
 #endif
 #include "stm32f1xx_hal.h"
 #include "axis.h"
-#define GYRO_DATA_REG 0x43
-#define ACC_DATA_REG  0x3b
-#define IMU_DEV_REG   0x68
-#define RESET_REG     0x00
 
 typedef struct{
     float pitch;
@@ -37,6 +33,8 @@ typedef struct imu_config{
     float gyro_f_cut;
     float acc_f_cut;
     float cpl_gain;
+    float gyro_slew_threshold;
+    float acc_slew_threshold;
     uint32_t dt;
     float imu_gyro_Sensitivity_Scale_Factor;
     uint8_t imu_adrr;

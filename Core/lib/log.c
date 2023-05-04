@@ -46,7 +46,7 @@ int write_char(UART_HandleTypeDef *huart,uint8_t *str)
     HAL_UART_Transmit(huart,str,len-1,100);
     return len;
 }
-int write_int(UART_HandleTypeDef *huart,int x)
+int writeln_int(UART_HandleTypeDef *huart,int x)
 {
     indexx=0;
     sig = 0;

@@ -1,12 +1,6 @@
-/*
- * ibus.c
- *
- *  Created on: 10 thg 2, 2023
- *      Author: sudo
- */
-
+#include "maths.h"
 #include "ibus.h"
-#include "timeclock.h"
+#include "scheduler.h"
 #include "usart.h"
 #include "imu.h"
 #define IBUS_BUFFSIZE 32
@@ -43,7 +37,8 @@ void ibusGet(){
 		//rx_ch3=ibusReadf(CH3,ch3_scale);
 		throttle=ibusReadRawRC(CH3);
 		ch3_ = throttle;
-		ch3_ -=1000;// 1000-200 -> 0-1000
+		ch3_ -=1000;
+		ch3_ = constrain(ch3_,0,1000);
 		ch3_ *=2;   // altitude  1 - 2 meter
 		ch5=ibusReadRawRC(CH5);
 		rx_ch4=ibusReadf(CH4,ch4_scale);

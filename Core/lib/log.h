@@ -9,7 +9,7 @@ extern "C" {
 
 
 void print_float(float n);
-int write_int(UART_HandleTypeDef *huart,int n);
+int writeln_int(UART_HandleTypeDef *huart,int n);
 int write_char(UART_HandleTypeDef *huart,uint8_t *);
 
 #ifdef __cplusplus

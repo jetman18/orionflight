@@ -8,8 +8,9 @@ extern "C" {
 #include "usart.h"
 #include "gpio.h"
 #include "mavlink_handler.h"
-#include "distance.h"
+#include "hc_sr04.h"
 #include "ibus.h"
+#include "scheduler.h"
 // IQR function
 //----------------------------------IQR--Handle-----------------------------
 
@@ -43,7 +44,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+	if(htim == &htim4)
+	{
+        timeCallback();
+	}
+}
 //----------------------------------IQR--Handle-----------------------------
 
 

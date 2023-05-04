@@ -1,10 +1,26 @@
-#include "timeclock.h"
-#include "stm32f1xx_hal.h"
-#include "tim.h"
+#include "scheduler.h"
 
+static uint16_t count_=1;
+static uint16_t feq=0;
+static uint64_t time1 =0;
+static bootTime_t t;
 static TIM_HandleTypeDef *htimmz;
 static uint64_t micross;
 
+void loop_run(uint32_t us)
+{
+	feq = 1/(us*0.000001);
+	if(count_ >= feq)count_=1;
+	count_ ++;
+    while((micros()-time1)<us);
+    time1=micros();
+}
+int fequency_division(uint16_t division,int k){
+	if(!k)return 0;
+    if(count_%division==0)return 1;
+    else if(feq==0)return 0;
+    return 0;
+}
 
 static uint16_t setoverFlow(int val,int flow_val){
     uint8_t k,l;
@@ -13,8 +29,6 @@ static uint16_t setoverFlow(int val,int flow_val){
     k = val - (l*k);
     return k;
 }
-static bootTime_t t;
-
 bootTime_t getBootTime(){
 	static uint16_t sec_L  =0;
 
@@ -29,7 +43,6 @@ void initTimeloop(TIM_HandleTypeDef *htimz){
 	micross=0;
 	HAL_TIM_Base_Start_IT(htimmz);
 }
-
 uint64_t micros(){
 	return (uint64_t)(micross + __HAL_TIM_GET_COUNTER(htimmz));
 }
@@ -48,11 +61,6 @@ void delay_us(uint32_t val){
     while((micros() - time_1)<val);
 
 }
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
-{
-	if(htim == htimmz)
-	{
-		micross += (0xffff-1);
-	}
+void timeCallback(){
+	micross = micross +(0xffff-1);
 }

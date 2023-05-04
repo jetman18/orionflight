@@ -5,8 +5,8 @@
  *      Author: sudo
  */
 
-#ifndef LIB_DISTANCE_H_
-#define LIB_DISTANCE_H_
+#ifndef HC_SR04_H
+#define HC_SR04_H
 #include "stdio.h"
 
 #ifdef __cplusplus

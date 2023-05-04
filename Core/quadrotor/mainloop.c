@@ -1,4 +1,3 @@
-#include "MAVLink/common/mavlink.h"
 #include "iqr_handler.h"
 #include "log.h"
 #include "i2c.h"
@@ -6,31 +5,20 @@
 #include "qmc5883.h"
 #include "usart.h"
 #include "gpio.h"
-#include "timeclock.h"
 #include "scheduler.h"
 #include "pwmwrite.h"
-#include "ppmreceiver.h"
 #include "pid.h"
-#include "maths.h"
-#include "lpf.h"
 #include "bmp280.h"
 #include "ibus.h"
-#include <string.h>
 #include "gps.h"
-#include "distance.h"
-#include "./ssd1306/ssd1306.h"
+#include "hc_sr04.h"
 #include "opticalflow.h"
 #include "../quadrotor/config.h"
 #include "mavlink_handler.h"
-#define BIAS_ALTITUDE 80
-#define GYRO_DELAY 4
 #define SYS_ID 1
-float buffe1[GYRO_DELAY];
-float buffe2[GYRO_DELAY];
 //BMP280_HandleTypedef bmp280;
 //static float temperature,pressure,altitude;
 //------test var-------------------------------
-extern attitude_t quad_;
 uint32_t iii,ii;
 uint32_t mil;
 int set_altitude;
@@ -57,18 +45,17 @@ void main_loop(){
 	//flowInit(&huart2,115200);
 /*--------------------------------------------*/
 while(1){
-	//ibusGet();
-	//imu_update();
-	//compass_get_heading_();
-	//pidUpdate();
-	//pwm2esc();
-
+	ibusGet();
+	imu_update();
+	compass_get_heading_();
+	FEQUENCY_DIV(20,ENABLE)hc_sr04_run(); //25hz
+	pidUpdate();
 	//FEQUENCY_DIV(100,ENABLE)mavlink_send();
-	write_int(&huart1,quad_.roll*100);
 	FEQUENCY_DIV(250,ENABLE)
 	{
 		HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_4);
 	}
-    loop_start(dt);
+	pwm2esc();
+    loop_run(dt);
    }
 }

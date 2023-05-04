@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "timeclock.h"
+#include "scheduler.h"
 #include"maths.h"
 #include"math.h"
 // 1oder
@@ -44,7 +44,16 @@ static inline float pt2FilterApply(float input,float f_cut,float dT)
     vl2 = vl2 + k_gain * (vl1 - vl2);
     return vl2;
 }
+typedef struct slew_lm{
+     float value;
+     float last_value;
+}slew_limiter_t;
 
+static inline void slewLimiter(slew_limiter_t *t,float slew_threshold){
+   float temp = t->value - t->last_value;
+   if(fabs(temp)>slew_threshold)t->value = t->last_value;
+   t->last_value = t->value;
+}
 
 #ifdef __cplusplus
 }

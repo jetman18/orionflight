@@ -1,5 +1,5 @@
 #include "ppmreceiver.h"
-#include "timeclock.h"
+#include "scheduler.h"
 #include "gpio.h"
 #include "maths.h"
 #define   NUM_CHANNEL 6

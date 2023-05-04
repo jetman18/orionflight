@@ -5,49 +5,25 @@
 extern "C" {
 #endif
 
-#define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
-
-
 #include "stm32f1xx_hal.h"
-#include "timeclock.h"
+#include "tim.h"
 
-
-
-/**
- *@brief  
- *@param  hz  tan so lap
- *@param  timeout
- */
 #define FEQUENCY_DIV(div,z) if(fequency_division(div,z))
+#define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
+typedef struct time{
+    uint8_t hour;
+    uint8_t min;
+    uint8_t sec;
+}bootTime_t;
 
-static uint16_t count_=1;
-static uint16_t feq=0;
-static uint64_t time1 =0;
-void loop_start(uint32_t us)
-{
-	feq = 1/(us*0.000001);
-	if(count_ >= feq)count_=1;
-	count_ ++;
-    while((micros()-time1)<us);
-    time1=micros();
-}
-int fequency_division(uint16_t division,int k){
-	if(!k)return 0;
-    if(count_%division==0)return 1;
-    else if(feq==0)return 0;
-    return 0;
-}
-static uint64_t time_1;
-void sch_Start(){
-	time_1 = micros();
-}
-int total_ps_time(uint32_t dt){
-	if((micros() - time_1)>dt){
-		return 0;
-	}
-	return 1;
-}
-
+void loop_run(uint32_t us);
+int fequency_division(uint16_t division,int k);
+bootTime_t getBootTime();
+void initTimeloop(TIM_HandleTypeDef*);
+void delay_us(uint32_t);
+void delay_ms(uint32_t);
+uint32_t millis();
+uint64_t micros();
 #ifdef __cplusplus
 }
 #endif
