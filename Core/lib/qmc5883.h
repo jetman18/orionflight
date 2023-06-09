@@ -15,6 +15,10 @@ typedef struct{
     int16_t mz;
    float compas;
 }MAG_t;
+
+extern float heading;
+extern float gyro_yaw;
+
 void qmc5883_init(I2C_HandleTypeDef *i2cport);
 void magnet_sensor_calibrate();
 void qmc_get_raw();

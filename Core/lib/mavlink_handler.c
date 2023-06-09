@@ -3,7 +3,6 @@
 #include "imu.h"
 #define MAX_LENGHT 100
 
-extern attitude_t quad_;
 static mavlink_named_value_int_t  val_int;
 static mavlink_named_value_float_t  val_float;
 static mavlink_attitude_t attitude;
@@ -13,8 +12,9 @@ static uint8_t data;
 static uint8_t index_;
 uint8_t sys_id,com_id;
 static UART_HandleTypeDef *uart;
-static uint8_t buffer[MAX_LENGHT];
+uint8_t buffer[MAX_LENGHT];
 static int isTxcpl;
+
 void mavlinkInit(uint8_t syss_id, uint8_t comm_id,UART_HandleTypeDef *uartt,uint32_t baudrate){
     isTxcpl = 1;
     index_ =0;

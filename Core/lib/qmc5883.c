@@ -12,16 +12,14 @@
 #include "filter.h"
 #include "scheduler.h"
 #include "imu.h"
-extern imu_config_t config;
-extern attitude_t quad_;
+
 float gyro_yaw;
-static float k_ =1.0f;
+static float k_ =0.05f;
 int16_t calib_axi[3];
 int16_t maxval[] = {0,0,0};
 const int16_t  calibrate_xyz[3]={-93,81,400};
 const uint8_t qmc_addres = (0x0d<<1);
 I2C_HandleTypeDef *qmc_i2cport;
-extern float rx_ch4;
 float heading;
 
 float combined_bias[3]={130.445,78.9098,-129.84};
@@ -67,9 +65,9 @@ void qmc_get_raw(){
 static int qmc_get_Heading(){
 	static uint8_t count_mag=0;
 	static int16_t mx,my,mz;
-	static int16_t offset_mx = 170;
-	static int16_t offset_my = 85;
-	static int16_t offset_mz = -10;
+	static int16_t offset_mx = 100;
+	static int16_t offset_my = -272;
+	static int16_t offset_mz = -300;
 	static float sum_=0,offset1 =0,offset2=0;
     static float heading_;
     float cosP,sinP,cosR,sinR;
@@ -104,6 +102,7 @@ static int qmc_get_Heading(){
             float m_y = mx*sinP*sinR + my*cosR - mz*cosP*sinR;
             offset1 = heading_;
             heading_  = atan2_approx(m_y,m_x)*180/3.1415f;
+
       		if(heading_<0)heading_ = 360 + heading_;
             offset2 = heading_ - offset1;
             if(offset2<-340)sum_ +=360;
@@ -152,7 +151,6 @@ void compass_get_heading_(){
 	gyro_yaw = gyro_yaw - quad_.yaw_velocity*temp;
 	if(qmc_get_Heading()){
 	 	gyro_yaw = gyro_yaw + k_*(heading - gyro_yaw);
-		if(k_>0.01)k_ = k_ - 0.005f;
 	}
 }
 //------------------------------------------------

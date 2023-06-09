@@ -8,14 +8,16 @@
 #ifndef HC_SR04_H
 #define HC_SR04_H
 #include "stdio.h"
-
+#include "pid.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern int hc04_Throttle;
+extern pid__t Pid_altitude_t;
 void hc_sr04_callback();
-int hc_sr04_get_dis();
-int isHcNewdata();
-void hc_sr04_send_trige();
+void hc_sr04_run();
+void hc_sr04_start();
 #ifdef __cplusplus
 }
 #endif

@@ -15,8 +15,8 @@ extern "C" {
 #define MINIMUM_THROTLE  1050
 #define BALAN
 
-#define ENABLE  1
-#define DISABLE 0
+#define ON  1
+#define OFF 0
 
 /* mpu configuration*/
 //#define MPU_VIA_SPI

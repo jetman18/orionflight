@@ -8,9 +8,8 @@
 #define IBUS_SYNCBYTE 0x20
 #define false 0
 #define true 1
-extern imu_config_t config;
-float  rx_ch1,rx_ch2,rx_ch4;
-uint16_t throttle,ch5,ch3_;
+float  rx_ch1,rx_ch2,rx_ch4,vr_1,vr_2;
+uint16_t throttle,altitude_stick,ch3_;
 static int ibusFrameDone = false;
 static uint32_t ibusChannelData[IBUS_MAX_CHANNEL];
 static uint8_t ibus[IBUS_BUFFSIZE] = { 0, };
@@ -18,10 +17,21 @@ static uint8_t rx_buff;
 static UART_HandleTypeDef *uart;
 float rx_yaw;
 static uint32_t p_time,delta_t;
-const float ch1_scale = 0.3f;
-const float ch2_scale = 0.3f;
+
+//#define ACCRO
+
+#ifdef ACCRO
+	const float ch1_scale = 0.6f;
+	const float ch2_scale = 0.6f;
+	const float max_rate  = 400.0f;
+#else
+	const float ch1_scale = 0.2f;
+	const float ch2_scale = 0.2f;
+	const float max_rate  = 50.0f;
+#endif
+
 //const float ch3_scale = 0.23f;  // -> 200mm/s
-const float ch4_scale = 0.3f;
+const float ch4_scale = 0.6;
 void ibusInit(UART_HandleTypeDef *uartt,uint32_t baudrate){
 	uart = uartt;
     uartt->Init.BaudRate = baudrate;
@@ -29,20 +39,25 @@ void ibusInit(UART_HandleTypeDef *uartt,uint32_t baudrate){
 	HAL_UART_Receive_IT(uart, &rx_buff,1);
 }
 void ibusGet(){
-	float temp = (float)(1e-06f)*config.dt;
-	rx_yaw = rx_yaw + rx_ch4*temp;
     if(ibusFrameComplete()){
 		rx_ch1=ibusReadf(CH1,ch1_scale);
 		rx_ch2=ibusReadf(CH2,ch2_scale);
+		rx_ch1 = constrainf(rx_ch1,-max_rate,max_rate);//40
+		rx_ch2 = constrainf(rx_ch2,-max_rate,max_rate);
 		//rx_ch3=ibusReadf(CH3,ch3_scale);
 		throttle=ibusReadRawRC(CH3);
 		ch3_ = throttle;
 		ch3_ -=1000;
 		ch3_ = constrain(ch3_,0,1000);
-		ch3_ *=2;   // altitude  1 - 2 meter
-		ch5=ibusReadRawRC(CH5);
+		//altitude scale
+        ch3_ *=1.5f;
+		altitude_stick=ibusReadRawRC(CH5);
+		vr_1 = (ibusReadRawRC(CH6)-1000)/200.0f;
+		vr_2 = (ibusReadRawRC(CH7)-1000)/200.0f;
 		rx_ch4=ibusReadf(CH4,ch4_scale);
      }
+	//float temp = (float)(1e-06f)*config.dt;
+	//rx_yaw = rx_yaw + rx_ch4*temp;
 }
 // Receive ISR callback
 void ibusDataReceive(uint16_t c)

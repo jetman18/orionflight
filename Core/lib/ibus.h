@@ -24,6 +24,14 @@ enum index{
 	CH7,
 	CH8
 };
+//extern float rx_yaw;
+extern uint16_t throttle,ch5,ch3_;
+extern uint16_t altitude_stick;
+extern int hc04_Throttle;
+extern float  rx_ch1,rx_ch2,rx_ch4;
+extern float vr_1,vr_2;
+
+
 void ibusGet();
 int ibusFrameComplete(void);
 void ibusDataReceive(uint16_t c);

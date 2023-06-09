@@ -11,6 +11,8 @@ extern "C" {
 #include "hc_sr04.h"
 #include "ibus.h"
 #include "scheduler.h"
+#include "ppmreceiver.h"
+#include "opticalflow.h"
 // IQR function
 //----------------------------------IQR--Handle-----------------------------
 
@@ -22,7 +24,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         ibusCallback();
     }                                                                                                                           //
     else if(huart == &huart1){
-      	mavlinkCallback();
+      	//mavlinkCallback();
+    	flowCallback();
      }
 }
 
@@ -35,14 +38,18 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
     }                                                                                                                          //
 }
 
-
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    if(GPIO_Pin == GPIO_PIN_8)
-    {
-     hc_sr04_callback();
+    if(GPIO_Pin == GPIO_PIN_8){
+        hc_sr04_callback();
     }
+ /*
+   else if(GPIO_Pin == GPIO_PIN_0){
+        ppmcallback();
+    }
+    */
 }
+
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {

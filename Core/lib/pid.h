@@ -6,20 +6,26 @@ extern "C" {
 #endif
 
 #include "stdio.h"
-typedef struct{
+
+typedef struct pid{
 	float kp;
 	float ki;
 	float kd;
 
+	float e;
 	float I;
 	float PID;
 	float pre_value;
 	float D_smooth;
 
-	float max_i;
+    float max_P;
+	float max_I;
+	float max_D;
 	float max_pid;
+
 	float f_cut_D;
 	float D_slew_threshold;
+    
 }pid__t;
 void pidUpdate();
 void PID_init_param();

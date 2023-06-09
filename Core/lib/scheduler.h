@@ -24,6 +24,7 @@ void delay_us(uint32_t);
 void delay_ms(uint32_t);
 uint32_t millis();
 uint64_t micros();
+void timeCallback();
 #ifdef __cplusplus
 }
 #endif
