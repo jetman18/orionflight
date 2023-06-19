@@ -31,7 +31,7 @@ float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
 static void pre_config()
 {
 	config.dt = 2000; //us
-	config.acc_f_cut = 10;
+	config.acc_f_cut = 20;
 	config.gyro_f_cut =150;
     config.acc_slew_threshold=0;//
 	config.gyro_slew_threshold=0;// deg/sec
@@ -78,8 +78,7 @@ static int gyro_read_raw(axis3_t *k){
 	  k->y = (int16_t)buffe[2]<<8|buffe[3];
 	  k->z = (int16_t)buffe[4]<<8|buffe[5];
 
-	  if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z))
-	  {
+	  if((p_val.x == k->x)&&(p_val.y == k->y)&&(p_val.z == k->z)){
 		return 1;
 	  }
 	  return 0;
@@ -103,7 +102,7 @@ static int acc_read_raw(axis3_t *k){
 
 	  acc__[X] = (int16_t)buffe[0]<<8|buffe[1];
 	  acc__[Y] = (int16_t)buffe[2]<<8|buffe[3];
-	  acc__[Z]  =(int16_t)buffe[4]<<8|buffe[5];
+	  acc__[Z] = (int16_t)buffe[4]<<8|buffe[5];
 
 	  k->x = acc__[X];
 	  k->y = acc__[Y];
@@ -284,7 +283,7 @@ void get_Acc_Angle(attitude_t *m){
 static axis3_t  acce;
 static faxis3_t accSmooth;
 void imu_update(){
-	faxis3_t gyro,acc;
+	static faxis3_t gyro,acc;
 	uint32_t sum;
 	float length;
     gyro_read(&gyro);
@@ -306,6 +305,7 @@ void imu_update(){
     acc.z = acce.z*length;
 
 #ifdef ACCSMOOTH
+
 	float RC = 1.0f / (2 *M_PIf *config.acc_f_cut);
 	float gain_lpf =(float)config.dt*(1e-06f) / (RC + config.dt*(1e-06f));
 	
@@ -326,9 +326,9 @@ void imu_update(){
 
 	float roll_   =  atan2_approx(vect.y,-vect.z)*180/M_PIf;
 	float pitch_  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
-	quad_.roll   =  ROUND_NUM(-roll_,3);
-    quad_.pitch  =  ROUND_NUM(pitch_,3);
-    quad_.yaw    =  -gyro.z;
+	quad_.roll   = fapplyDeadband(-roll_,0.05f);
+    quad_.pitch  = fapplyDeadband(pitch_,0.05f);
+    quad_.yaw    = -gyro.z;
 
 }
 

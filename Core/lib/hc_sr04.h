@@ -12,12 +12,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 extern int hc04_Throttle;
 extern pid__t Pid_altitude_t;
 void hc_sr04_callback();
 void hc_sr04_run();
-void hc_sr04_start();
 #ifdef __cplusplus
 }
 #endif

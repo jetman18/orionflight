@@ -21,7 +21,7 @@
 #pragma once
 
 #include <stdint.h>
-
+#include <math.h>
 #ifndef sq
 #define sq(x) ((x)*(x))
 #endif

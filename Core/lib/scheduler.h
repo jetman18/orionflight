@@ -8,23 +8,33 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 #include "tim.h"
 
-#define FEQUENCY_DIV(div,z) if(fequency_division(div,z))
+extern TIM_HandleTypeDef *htimmz;
+extern uint32_t micross;
+
 #define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
+#define TIME_CALLBACK() (micross += 65535UL)
+#define micros() (uint32_t)((micross) + (__HAL_TIM_GET_COUNTER(htimmz)))
+#define millis()  (uint32_t)(micross/1000UL)
+
 typedef struct time{
     uint8_t hour;
     uint8_t min;
     uint8_t sec;
 }bootTime_t;
 
-void loop_run(uint32_t us);
-int fequency_division(uint16_t division,int k);
+typedef struct {
+    void (*exec)();
+    uint32_t execution_time_us;
+    uint32_t execution_cycle_us;
+    uint32_t last_exec_time_us;
+    uint32_t period;
+} task_t;
+
+void start_scheduler();
+void init_sche(TIM_HandleTypeDef *htimz);
 bootTime_t getBootTime();
-void initTimeloop(TIM_HandleTypeDef*);
 void delay_us(uint32_t);
 void delay_ms(uint32_t);
-uint32_t millis();
-uint64_t micros();
-void timeCallback();
 #ifdef __cplusplus
 }
 #endif

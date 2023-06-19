@@ -7,10 +7,13 @@
 #include "qmc5883.h"
 #include "hc_sr04.h"
 #include "pwmwrite.h"
+#include "string.h"
+
 #define US2SEC(x)  (float)((x)*(1e-06f))
 #define MINIMUN_THROTTLE 1000U
+#define MAXIMUN_THROTTLE 2000U
 #define MINIMUN_THROTTLE_SET 1100U
-#define MOTO_CUTOFF_FEQ 40.0f
+#define PWM_CUTOFF_FEQ  70.0f
 //#define ACCRO
 
 pid__t Pid_angle_pitch_t,Pid_angle_roll_t,Pid_angle_yaw_t;
@@ -19,6 +22,7 @@ pid__t Pid_velocity_pitch_t,Pid_velocity_roll_t, Pid_velocity_yaw_t;
 uint16_t moto1,moto2,moto3,moto4;
 void PID_init_param(){
 	//------angle------------
+	// pitch
 	Pid_angle_pitch_t.kp =7;
 	Pid_angle_pitch_t.ki =0;
 	Pid_angle_pitch_t.kd =0;
@@ -27,7 +31,9 @@ void PID_init_param(){
 	Pid_angle_pitch_t.max_D = 0;    
 	Pid_angle_pitch_t.max_pid =300;// = setRate_limit 
 	Pid_angle_pitch_t.f_cut_D =50;
-
+	// roll
+	memcpy(&Pid_angle_roll_t,&Pid_angle_pitch_t,sizeof(pid__t));
+	// yaw
 	Pid_angle_yaw_t.kp =7;
 	Pid_angle_yaw_t.ki =0;
 	Pid_angle_yaw_t.kd = 0;
@@ -47,6 +53,8 @@ void PID_init_param(){
 	Pid_velocity_pitch_t.max_pid = 300;
 	Pid_velocity_pitch_t.f_cut_D =30;
 
+	memcpy(&Pid_velocity_roll_t,&Pid_velocity_pitch_t,sizeof(pid__t));
+
 	Pid_velocity_yaw_t.kp =20;
 	Pid_velocity_yaw_t.ki =0;
 	Pid_velocity_yaw_t.kd =0;
@@ -56,6 +64,7 @@ void PID_init_param(){
 	Pid_velocity_yaw_t.max_pid = 300;
 	Pid_velocity_yaw_t.f_cut_D =0;
 
+/*
 	Pid_velocity_roll_t.kp = Pid_velocity_pitch_t.kp;
 	Pid_velocity_roll_t.ki = Pid_velocity_pitch_t.ki;
 	Pid_velocity_roll_t.kd = Pid_velocity_pitch_t.kd;
@@ -73,6 +82,7 @@ void PID_init_param(){
 	Pid_angle_roll_t.max_D = Pid_angle_pitch_t.max_D;
 	Pid_angle_roll_t.max_pid = Pid_angle_pitch_t.max_pid;
 	Pid_angle_roll_t.f_cut_D =Pid_angle_pitch_t.f_cut_D;
+*/
 }
 
 void pidCalculate(pid__t *pid_temp,float sensor,float control,uint32_t Dt_time)
@@ -104,10 +114,11 @@ void resetPID(pid__t *t)
 	t->I =0.0f;
 	t->pre_value=0.0f;
 }
+
 void pidUpdate(){
+
 	if(throttle>1020){
-	//if(altitude_stick>1700){
-		static uint16_t m1,m2,m3,m4;
+		static int pwm1,pwm2,pwm3,pwm4;
 
 #ifdef ACCRO
 		pidCalculate(&Pid_velocity_pitch_t,quad_.pitch_velocity,-rx_ch2,config.dt);//Pid_angle_pitch_t.PID
@@ -127,24 +138,39 @@ void pidUpdate(){
 		pidCalculate(&Pid_velocity_roll_t,quad_.roll_velocity,-Pid_angle_roll_t.PID,config.dt);//-Pid_angle_roll_t.PID
 		pidCalculate(&Pid_velocity_yaw_t ,-quad_.yaw_velocity,-rx_ch4,config.dt);//Pid_angle_yaw_t.PID
 #endif
+        if(altitude_stick<1700){
+		    pwm1 = (int)throttle  + (int)Pid_velocity_pitch_t.PID - (int)Pid_velocity_roll_t.PID - (int)Pid_velocity_yaw_t.PID;
+		    pwm2 = (int)throttle  + (int)Pid_velocity_pitch_t.PID + (int)Pid_velocity_roll_t.PID + (int)Pid_velocity_yaw_t.PID;
+		    pwm3 = (int)throttle  - (int)Pid_velocity_pitch_t.PID + (int)Pid_velocity_roll_t.PID - (int)Pid_velocity_yaw_t.PID;
+		    pwm4 = (int)throttle  - (int)Pid_velocity_pitch_t.PID - (int)Pid_velocity_roll_t.PID + (int)Pid_velocity_yaw_t.PID;
+        }
+        else{
+			pwm1 = hc04_Throttle + (int)Pid_altitude_t.PID + (int)Pid_velocity_pitch_t.PID - (int)Pid_velocity_roll_t.PID - (int)Pid_velocity_yaw_t.PID;
+			pwm2 = hc04_Throttle + (int)Pid_altitude_t.PID + (int)Pid_velocity_pitch_t.PID + (int)Pid_velocity_roll_t.PID + (int)Pid_velocity_yaw_t.PID;
+			pwm3 = hc04_Throttle + (int)Pid_altitude_t.PID - (int)Pid_velocity_pitch_t.PID + (int)Pid_velocity_roll_t.PID - (int)Pid_velocity_yaw_t.PID;
+			pwm4 = hc04_Throttle + (int)Pid_altitude_t.PID - (int)Pid_velocity_pitch_t.PID - (int)Pid_velocity_roll_t.PID + (int)Pid_velocity_yaw_t.PID;
+        }
+        float coss = cos_approx(quad_.pitch*RAD)*cos_approx(quad_.roll*RAD);
+        coss = constrainf(coss,0.8f,1.0f);
 
-		//m1 =throttle  + Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
-		//m2 =throttle  + Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
-		//m3 =throttle  - Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
-		//m4 =throttle  - Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
+        pwm1 = pwm1/coss;
+        pwm2 = pwm2/coss;
+        pwm3 = pwm3/coss;
+        pwm4 = pwm4/coss;
 
-		m1 =hc04_Throttle + Pid_altitude_t.PID + Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
-		m2 =hc04_Throttle + Pid_altitude_t.PID + Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
-		m3 =hc04_Throttle + Pid_altitude_t.PID - Pid_velocity_pitch_t.PID + Pid_velocity_roll_t.PID - Pid_velocity_yaw_t.PID;
-		m4 =hc04_Throttle + Pid_altitude_t.PID - Pid_velocity_pitch_t.PID - Pid_velocity_roll_t.PID + Pid_velocity_yaw_t.PID;
+    	pwm1 = constrain(pwm1,MINIMUN_THROTTLE,MAXIMUN_THROTTLE);
+    	pwm2 = constrain(pwm2,MINIMUN_THROTTLE,MAXIMUN_THROTTLE);
+    	pwm3 = constrain(pwm3,MINIMUN_THROTTLE,MAXIMUN_THROTTLE);
+    	pwm4 = constrain(pwm4,MINIMUN_THROTTLE,MAXIMUN_THROTTLE);
 
 		//moto smooth
-	    float RC = 1.0f/(2*M_PIf*MOTO_CUTOFF_FEQ);
+	    float RC = 1.0f/(2*M_PIf*PWM_CUTOFF_FEQ );
 		float gain_lpf = config.dt*(1e-06f)/(RC + config.dt*(1e-06f));
-        moto1 = moto1 + gain_lpf*(m1 - moto1);
-        moto2 = moto2 + gain_lpf*(m2 - moto2);
-        moto3 = moto3 + gain_lpf*(m3 - moto3);
-        moto4 = moto4 + gain_lpf*(m4 - moto4);
+        moto1 = moto1 + gain_lpf*(pwm1 - moto1);
+        moto2 = moto2 + gain_lpf*(pwm2 - moto2);
+        moto3 = moto3 + gain_lpf*(pwm3 - moto3);
+        moto4 = moto4 + gain_lpf*(pwm4 - moto4);
+
 
 		if(moto1<MINIMUN_THROTTLE_SET)moto1=throttle;
 		if(moto2<MINIMUN_THROTTLE_SET)moto2=throttle;

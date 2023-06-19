@@ -14,7 +14,7 @@ extern "C" {
 #include "ppmreceiver.h"
 #include "opticalflow.h"
 // IQR function
-//----------------------------------IQR--Handle-----------------------------
+//----------------------------------IQR--Handler-----------------------------
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -49,16 +49,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
     */
 }
-
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
-	if(htim == &htim4)
+	if(htim == &htim3)
 	{
-        timeCallback();
+		TIME_CALLBACK();
 	}
 }
-//----------------------------------IQR--Handle-----------------------------
+//----------------------------------IQR--Handler-----------------------------
 
 
 

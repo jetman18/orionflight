@@ -13,6 +13,10 @@ extern "C" {
 
 #include"stdio.h"
 #include "usart.h"
+#include "pid.h"
+
+extern pid__t x_flow_t;
+extern pid__t y_flow_t;
 void flowInit(UART_HandleTypeDef *uartt,uint32_t baudrate);
 void flowCallback();
 void optical_flow_run();

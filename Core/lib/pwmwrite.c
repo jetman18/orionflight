@@ -48,16 +48,9 @@ void motoIdle(){
 	__HAL_TIM_SetCompare (htimm,ch4,1000);
 }
 void pwm2esc(){
-	moto1 = constrain(moto1,1000,2000);
 	__HAL_TIM_SetCompare (htimm,ch1,moto1);
-
-	moto2 = constrain(moto2,1000,2000);
 	__HAL_TIM_SetCompare (htimm,ch2,moto2);
-
-	moto3 = constrain(moto3,1000,2000);
 	__HAL_TIM_SetCompare (htimm,ch3,moto3);
-
-	moto4 = constrain(moto4,1000,2000);
 	__HAL_TIM_SetCompare (htimm,ch4,moto4);
 
 };
