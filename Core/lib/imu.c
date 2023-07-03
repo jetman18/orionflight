@@ -31,11 +31,11 @@ float acc_vect_offs_x, acc_vect_offs_y, acc_vect_offs_z;
 static void pre_config()
 {
 	config.dt = 2000; //us
-	config.acc_f_cut = 20;
-	config.gyro_f_cut =150;
+	config.acc_f_cut = 100;
+	config.gyro_f_cut =100;
     config.acc_slew_threshold=0;//
 	config.gyro_slew_threshold=0;// deg/sec
-	config.cpl_gain = 0.00001f;
+	config.cpl_gain = 0.0001f;
 	config.imu_adrr = (0x68<<1);
 	config.offset_cycle =1000;
 	config.imu_acc_data_res = ACC_DATA_REG;
@@ -207,7 +207,7 @@ static void gyro_read(faxis3_t *angle){
 
 }
 
-static void rotateV(faxis3_t *vector,faxis3_t delta)
+static void rotateBody2Earth(faxis3_t *vector,faxis3_t delta)
 {
     float mat[3][3];
     float cosx, sinx, cosy, siny, cosz, sinz;
@@ -290,7 +290,7 @@ void imu_update(){
     quad_.pitch_velocity = -gyro.y;
 	quad_.roll_velocity  = gyro.x;
 	quad_.yaw_velocity   = gyro.z;
-	rotateV(&vect,gyro);
+	rotateBody2Earth(&vect,gyro);
     acc_read_raw(&acce);
     quad_.raw_acc_x = acce.x;
     quad_.raw_acc_y = acce.y;
@@ -304,31 +304,30 @@ void imu_update(){
     acc.y = acce.y*length;
     acc.z = acce.z*length;
 
-#ifdef ACCSMOOTH
-
 	float RC = 1.0f / (2 *M_PIf *config.acc_f_cut);
 	float gain_lpf =(float)config.dt*(1e-06f) / (RC + config.dt*(1e-06f));
 	
     accSmooth.x = accSmooth.x + gain_lpf*(acc.x - accSmooth.x);
 	accSmooth.y = accSmooth.y + gain_lpf*(acc.y - accSmooth.y);
 	accSmooth.z = accSmooth.z + gain_lpf*(acc.z - accSmooth.z);
-#else
-    accSmooth.x = acc.x;
-	accSmooth.y = acc.y;
-	accSmooth.z = acc.z;
-#endif
 
     //complimentary filter
 	if(k_>config.cpl_gain)k_ = k_ - k_*0.02f;
-    vect.x = vect.x + k_*(accSmooth.x - vect.x);
-    vect.y = vect.y + k_*(accSmooth.y - vect.y);
-    vect.z = vect.z + k_*(accSmooth.z - vect.z);
+    vect.x = vect.x + k_*(acc.x - vect.x);
+    vect.y = vect.y + k_*(acc.y - vect.y);
+    vect.z = vect.z + k_*(acc.z - vect.z);
 
-	float roll_   =  atan2_approx(vect.y,-vect.z)*180/M_PIf;
-	float pitch_  = -atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
-	quad_.roll   = fapplyDeadband(-roll_,0.05f);
-    quad_.pitch  = fapplyDeadband(pitch_,0.05f);
-    quad_.yaw    = -gyro.z;
+    float trueRoll  = atan2_approx(accSmooth.y,-accSmooth.z)*180/M_PIf;
+    float truePitch = atan2_approx(-accSmooth.x, (1/invSqrt_(accSmooth.y*accSmooth.y + accSmooth.z*accSmooth.z)))*180/M_PIf;
 
+	float roll_   = atan2_approx(vect.y,-vect.z)*180/M_PIf;
+	float pitch_  = atan2_approx(-vect.x, (1/invSqrt_(vect.y * vect.y + vect.z * vect.z)))*180/M_PIf;
+	quad_.true_roll  = trueRoll;
+	quad_.true_pitch = truePitch ;
+	quad_.roll   = roll_  - 0.5f;
+    quad_.pitch  = pitch_ + 1.0f;
+    quad_.yaw   += gyro.z*config.dt*(1e-06f);
+    quad_.error_pitch =  truePitch - pitch_;
+	quad_.error_roll =   trueRoll - roll_;
 }
 

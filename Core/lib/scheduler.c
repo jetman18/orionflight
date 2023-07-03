@@ -46,6 +46,7 @@ task_t task[]={
   {hc_sr04_run,     0,0,0,13},/*  sr-hc04  task  40 hz*/
 };
 
+
 void init_sche(TIM_HandleTypeDef *htimz){
 	htimmz = htimz;
 	HAL_TIM_Base_Start_IT(htimmz);
@@ -62,9 +63,7 @@ void init_sche(TIM_HandleTypeDef *htimz){
 
 static void wait(){
     static uint32_t time_us;
-    if(time_us == 0) goto bl;
     while(( micros() - time_us )<LOOP_US);
-    bl:
     time_us = micros();
 }
 
@@ -94,6 +93,8 @@ void delay_us(uint32_t val){
   time_us = micros();
   while((micros() - time_us)<val);
 }
+
+
 
 void start_scheduler() {
   static int counter = 0;

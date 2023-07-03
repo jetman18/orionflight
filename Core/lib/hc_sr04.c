@@ -13,16 +13,16 @@ static uint16_t pulse;
 static uint32_t time_;
 int hc04_Throttle = 1000;
 const uint16_t ofset_alti = 30;  //mm
-static int dis;
+int dis;
 pid__t Pid_altitude_t={
 	.kp =0.7,
-	.ki =0.09,
+	.ki =0.08,
 	.kd =0.3,
 	.max_P = 400,
 	.max_I = 400,
 	.max_D = 300,
 	.max_pid =500,
-	.f_cut_D =10
+	.f_cut_D =7
 };
 int isHcNewdata(){
 	return (!pin);
@@ -38,11 +38,11 @@ static void hc_sr04_send_trige(){
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11,0);
 }
 static float dis_lpf;
-#define LPF_CUTOFF_FEQ 5  //hz
+#define LPF_CUTOFF_FEQ 3  //hz
 void hc_sr04_run(){
 	static float last_dis = 0;
 	dis = hc_sr04_get_dis();
-	dis = val_change_limiter(last_dis,dis,-20,20);
+	dis = val_change_limiter(last_dis,dis,-15,15);
 
     float RC = 1.0f/(2*M_PIf*LPF_CUTOFF_FEQ);
 	float gain_lpf = 0.04f/(RC + 0.04f);

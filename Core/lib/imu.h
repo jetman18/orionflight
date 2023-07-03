@@ -30,6 +30,14 @@ typedef struct{
     float roll_velocity;
     float yaw_velocity;
 
+    float true_pitch;
+    float true_roll;
+    float true_yaw;
+
+    float error_pitch;
+    float error_roll;
+    float error_yaw;
+
     int16_t raw_acc_x;
     int16_t raw_acc_y;
     int16_t raw_acc_z;

@@ -28,9 +28,7 @@ enum index{
 extern uint16_t throttle,ch5,ch3_;
 extern uint16_t altitude_stick;
 extern int hc04_Throttle;
-extern float  rx_ch1,rx_ch2,rx_ch4;
-extern float vr_1,vr_2;
-
+extern float  rx_ch1,rx_ch2,rx_ch4,flow_stick,rx_yaw;
 
 void ibusGet();
 int ibusFrameComplete(void);

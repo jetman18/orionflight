@@ -8,7 +8,7 @@
 #define IBUS_SYNCBYTE 0x20
 #define false 0
 #define true 1
-float  rx_ch1,rx_ch2,rx_ch4,vr_1,vr_2;
+float  rx_ch1,rx_ch2,rx_ch4,flow_stick,vr_2;
 uint16_t throttle,altitude_stick,ch3_;
 static int ibusFrameDone = false;
 static uint32_t ibusChannelData[IBUS_MAX_CHANNEL];
@@ -31,7 +31,7 @@ static uint32_t p_time,delta_t;
 #endif
 
 //const float ch3_scale = 0.23f;  // -> 200mm/s
-const float ch4_scale = 0.6;
+const float ch4_scale = 0.4;
 void ibusInit(UART_HandleTypeDef *uartt,uint32_t baudrate){
 	uart = uartt;
     uartt->Init.BaudRate = baudrate;
@@ -52,12 +52,12 @@ void ibusGet(){
 		//altitude scale
         ch3_ *=1.5f;
 		altitude_stick=ibusReadRawRC(CH5);
-		vr_1 = (ibusReadRawRC(CH6)-1000)/200.0f;
+		flow_stick =  ibusReadRawRC(CH6);
 		vr_2 = (ibusReadRawRC(CH7)-1000)/200.0f;
-		rx_ch4=ibusReadf(CH4,ch4_scale);
+		rx_ch4 = ibusReadf(CH4,ch4_scale);
+		rx_ch4 = fapplyDeadband(rx_ch4,2);
      }
-	//float temp = (float)(1e-06f)*config.dt;
-	//rx_yaw = rx_yaw + rx_ch4*temp;
+	rx_yaw = rx_yaw + rx_ch4*(0.02f);
 }
 // Receive ISR callback
 void ibusDataReceive(uint16_t c)

@@ -24,6 +24,7 @@ typedef struct pid{
 	float max_pid;
 
 	float f_cut_D;
+	float I_deadband;
 	float D_slew_threshold;
     
 }pid__t;
