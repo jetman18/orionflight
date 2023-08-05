@@ -17,22 +17,22 @@
 #define PWM_CUTOFF_FEQ  70.0f
 //#define ACCRO
 pid__t pid_rate_pitch,pid_rate_roll, pid_rate_yaw;
-float pitch_p,roll_p,yaw_p;
+float pitch_kp,roll_kp,yaw_kp;
 
 uint16_t moto1,moto2,moto3,moto4;
 void PID_init_param(){
-    pitch_p = 6.5f;
-    roll_p  = 6.5f;
-    yaw_p   = 3.0f;
+    pitch_kp = 2.5f;
+    roll_kp  = 2.5f;
+    yaw_kp   = 3.0f;
 
-	pid_rate_pitch.kp =1.3;
-	pid_rate_pitch.ki =1;
+	pid_rate_pitch.kp =3.3;
+	pid_rate_pitch.ki =3;
 	pid_rate_pitch.kd =0.03,
 	pid_rate_pitch.max_P = 400;
 	pid_rate_pitch.max_I = 300;
 	pid_rate_pitch.max_D = 200;
 	pid_rate_pitch.max_pid = 500;
-	pid_rate_pitch.I_deadband = 1.0f;
+	pid_rate_pitch.I_deadband = 3.0f;
 	pid_rate_pitch.f_cut_D =10;
 
 	memcpy(&pid_rate_roll,&pid_rate_pitch,sizeof(pid__t));
@@ -44,14 +44,14 @@ void PID_init_param(){
 	pid_rate_yaw.max_I = 400;
 	pid_rate_yaw.max_D = 200;
 	pid_rate_yaw.max_pid = 300;
-	pid_rate_yaw.I_deadband = 1.0f;
+	pid_rate_yaw.I_deadband = 3.0f;
 	pid_rate_yaw.f_cut_D =0;
 }
 
 void pidCalculate(pid__t *pid_temp,float sensor,float control,uint32_t Dt_time)
 {
 	float error,P,D;
-    const float RC = 1.0f / (2 *M_PIf *pid_temp->f_cut_D);
+    float RC = 1.0f / (2 *M_PIf *pid_temp->f_cut_D);
 	float gain_lpf = Dt_time*(1e-06f)/(RC + Dt_time*(1e-06f));
 	                              
     error =  sensor - control;
@@ -80,32 +80,39 @@ void resetPID(pid__t *t)
 	t->PID =0.0f;
 }
 
+float roll_setpoint;
+float pitch_setpoint;
 void pidUpdate(){
-
+	static int pwm1,pwm2,pwm3,pwm4;
 	if(throttle>1020){
-		static int pwm1,pwm2,pwm3,pwm4;
+        // pitch P-PID
 
-#ifdef ACCRO
-		pidCalculate(&pid_rate_pitch,quad_.pitch_velocity,-rx_ch2,config.dt);//Pid_angle_pitch_t.PID
-		pidCalculate(&pid_rate_roll,quad_.roll_velocity,rx_ch1,config.dt);//-Pid_angle_roll_t.PID
-		pidCalculate(&pid_rate_yaw ,-quad_.yaw_velocity,-rx_ch4,config.dt);//Pid_angle_yaw_t.PID
-#else
-		//angles
-		float controlL_pitch = rx_ch2 - y_flow_t.PID;
-		float controlL_roll =  rx_ch1 - x_flow_t.PID;
-		
-		float rate_pitch = (quad_.pitch - controlL_pitch)*pitch_p;
-		float rate_roll  = (quad_.roll  - controlL_roll)*roll_p;
-		float rate_yaw = (quad_.yaw - rx_yaw)*yaw_p;
+		float error_rate_pitch;
+		pitch_setpoint = constrainf(rx_ch2,-45,45);
+		pitch_setpoint = fapplyDeadband(pitch_setpoint,2);
+		//pitch_setpoint =  pitch_setpoint - y_flow_t.PID;
+		error_rate_pitch = (quad_.pitch - pitch_setpoint)*pitch_kp;
+		error_rate_pitch = constrainf(error_rate_pitch,-300.0f,300.0f);
+		//error_rate_pitch = 1/invSqrt_(10*error_rate_pitch);/////////////////////////////////////////
+		pidCalculate(&pid_rate_pitch,-quad_.pitch_velocity,error_rate_pitch,config.dt);
+        //roll  P-PID
 
-		rate_pitch = constrainf(rate_pitch,-300.0f,300.0f);
-		rate_roll  = constrainf(rate_roll,-300.0f,300.0f);
-		rate_yaw   = constrainf(rate_yaw,-300.0f,300.0f);
-		 //rate
-		pidCalculate(&pid_rate_pitch,-quad_.pitch_velocity,rate_pitch,config.dt);
-		pidCalculate(&pid_rate_roll,-quad_.roll_velocity,-rate_roll,config.dt);
-		pidCalculate(&pid_rate_yaw ,-quad_.yaw_velocity,rx_ch4,config.dt);//
-#endif
+		float error_rate_roll;
+		roll_setpoint = constrainf(rx_ch1,-45,45);
+		roll_setpoint = fapplyDeadband(roll_setpoint,2);
+		//roll_setpoint =  roll_setpoint - x_flow_t.PID;
+		error_rate_roll = (quad_.roll - roll_setpoint)*roll_kp;
+		error_rate_roll = constrainf(-error_rate_roll,-300.0f,300.0f);
+		//error_rate_roll = 1/invSqrt_(10*error_rate_roll);/////////////////////////////////////////
+		pidCalculate(&pid_rate_roll,-quad_.roll_velocity,error_rate_roll,config.dt);
+        //yaw
+		float yaw_setpoint;
+		float error_rate_yaw;
+		yaw_setpoint = fapplyDeadband(rx_ch4,2);
+		//yaw_setpoint = constrainf(yaw_setpoint,-45,45);
+		//error_rate_yaw = (quad_.yaw -  yaw_setpoint)* yaw_kp;
+		//error_rate_yaw = constrainf(error_rate_yaw,-300.0f,300.0f);
+		pidCalculate(&pid_rate_yaw,-quad_.yaw_velocity,yaw_setpoint,config.dt);
 
         if(altitude_stick<1700){
 		    pwm1 = (int)throttle  + (int)pid_rate_pitch.PID - (int)pid_rate_roll.PID - (int)pid_rate_yaw.PID;

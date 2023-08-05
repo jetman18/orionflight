@@ -7,7 +7,7 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 
 
-
+void imu_update_kalman();
 
 #ifdef __cplusplus
 }

@@ -27,7 +27,7 @@ typedef struct gps_data{
     uint16_t  coord_update_time;
 }gpsData_t;
 
-gpsData_t gpsGetdata();
+extern gpsData_t gps_t;
 void gpsInit(UART_HandleTypeDef *uartt,uint32_t baudrate);
 void gpsCallback(void);
 

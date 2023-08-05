@@ -104,6 +104,7 @@ float acos_approx(float x)
     else
         return result;
 }
+
 #endif
 
 int gcd(int num, int denom)
@@ -340,11 +341,16 @@ int16_t qMultiply(fix12_t q, int16_t input) {
 fix12_t  qConstruct(int16_t num, int16_t den) {
     return (num << 12) / den;
 }
-/*
-float roundVal(float val,float round){
-   int de_ = 1/round;
-   int k_ = val*de_;
-   return (float)k_/de_;
+
+
+float invSqrt_(float x)
+{
+	float halfx = 0.5f * x;
+	float y = x;
+	long i = *(long*)&y;
+	i = 0x5f3759df - (i>>1);
+	y = *(float*)&i;
+	y = y * (1.5f - (halfx * y * y));
+	//y = y * (1.5f - (halfx * y * y));
+	return y;
 }
-#define ROUND_NUM(x,y) (float)((int)(x*(1/y)))/(1/y)
-*/

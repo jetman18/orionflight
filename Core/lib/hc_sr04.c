@@ -41,6 +41,12 @@ static float dis_lpf;
 #define LPF_CUTOFF_FEQ 3  //hz
 void hc_sr04_run(){
 	static float last_dis = 0;
+	float altitude_setpoint;
+    altitude_setpoint = throttle;
+    altitude_setpoint -=1000;
+    altitude_setpoint = constrain(altitude_setpoint,0,1000); //0-1000 mm
+    altitude_setpoint *= 1.5f;   // 0-1500 mm
+
 	dis = hc_sr04_get_dis();
 	dis = val_change_limiter(last_dis,dis,-15,15);
 
@@ -55,7 +61,7 @@ void hc_sr04_run(){
 		if(altitude_stick>1700 && throttle >1020){
 			hc04_Throttle = hc04_Throttle + (THOROTTLE_TAKE_OFF-1000)*0.026f;
 			hc04_Throttle = constrain(hc04_Throttle,1000,THOROTTLE_TAKE_OFF);
-			pidCalculate(&Pid_altitude_t,-dis + ofset_alti,-ch3_,26000);
+			pidCalculate(&Pid_altitude_t,-dis + ofset_alti,-altitude_setpoint,26000);
 		}
 	    if(throttle<1020){
 			resetPID(&Pid_altitude_t);

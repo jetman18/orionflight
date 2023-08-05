@@ -16,6 +16,10 @@
 #include "opticalflow.h"
 #include "../quadrotor/config.h"
 #include "mavlink_handler.h"
+#include "mpu6500.h"
+#include "ms5611.h"
+#include "kalman.h"
+#include "ahrs.h"
 #define LOOP_US  2000U
 #define MAX_LOOP_BREAK_US  1700U
 
@@ -33,19 +37,18 @@ uint32_t num_tasks = 0;
  *|pr5 period
  ************************************************/
 task_t task[]={ 
-  {imu_update,      0,0,0,1}, /*  imu task 500 hz*/
+    {ahrs_update,      0,0,0,1}, /*  imu task 500 hz*/
 
-  {pidUpdate,       0,0,0,1},/*  pid task  500 hz*/
+  //{pidUpdate,       0,0,0,1},/*  pid task  500 hz*/
 
-  {pwm2esc,         0,0,0,1},/*  esc task  500 hz*/
+  //{pwm2esc,         0,0,0,1},/*  esc task  500 hz*/
 
-  {ibusGet,         0,0,0,10},/*  receiver task  50 hz*/
+  //{ibusGet,         0,0,0,10},/*  receiver task  50 hz*/
 
-  {optical_flow_run,0,0,0,13},/*  optflow task  40 hz*/
+ // {optical_flow_run,0,0,0,13},/*  optflow task  40 hz*/
 
-  {hc_sr04_run,     0,0,0,13},/*  sr-hc04  task  40 hz*/
+ // {hc_sr04_run,     0,0,0,13},/*  sr-hc04  task  40 hz*/
 };
-
 
 void init_sche(TIM_HandleTypeDef *htimz){
 	htimmz = htimz;
@@ -53,11 +56,12 @@ void init_sche(TIM_HandleTypeDef *htimz){
 	initPWM(&htim4);
 	ibusInit(&huart2,115200);
 	//mavlinkInit(SYS_ID,0,&huart2,115200);
-	MPU_i2c_init(&hi2c2);
+	mpu6050_init();
 	motoIdle();
 	//qmc5883_init(&hi2c1);
+  bmp280_init();
 	PID_init_param();
-	flowInit(&huart1,19200);
+	//flowInit(&huart1,19200);
 	num_tasks  = sizeof(task)/sizeof(task_t);
 }
 
@@ -99,7 +103,6 @@ void delay_us(uint32_t val){
 void start_scheduler() {
   static int counter = 0;
   uint32_t time_1;
-  uint32_t time__ = micros();
   uint32_t total_execution_time_us = 0;
   for (int i = 0; i < num_tasks; i++){
       if((task[i].exec != NULL) && (counter % task[i].period == 0)){

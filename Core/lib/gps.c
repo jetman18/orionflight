@@ -165,7 +165,7 @@ static void _update_checksum(uint8_t *data, uint8_t len, uint8_t *ck_a, uint8_t 
         data++;
     }
 }
-static gpsData_t gps_t;
+gpsData_t gps_t;
 gpsData_t gpsGetdata(){
     return gps_t;
 }

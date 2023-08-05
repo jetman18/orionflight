@@ -1,9 +1,3 @@
-/*
- * qmc5883.cpp
- *
- *  Created on: 8 thg 1, 2023
- *      Author: sudo
- */
 
 #include "qmc5883.h"
 #include "maths.h"
@@ -12,6 +6,7 @@
 #include "filter.h"
 #include "scheduler.h"
 #include "imu.h"
+#include "axis.h"
 
 float gyro_yaw;
 static float k_ =0.05f;
@@ -39,29 +34,43 @@ void qmc5883_init(I2C_HandleTypeDef *i2cport){
     HAL_I2C_Master_Transmit(qmc_i2cport,qmc_addres,buf,2, 1);
 }
 axis3_t tt;
-void qmc_get_raw(){
+void qmc_get_raw(axis3_t *axis){
 	  uint8_t buf[6]={0};
 	  HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,6,1);
 	  tt.x=((int16_t)buf[1]<<8|buf[0]) ;
 	  tt.y=((int16_t)buf[3]<<8|buf[2]);
 	  tt.z=((int16_t)buf[5]<<8|buf[4]);
-
-	  /*
-	  pitch  *= 0.01745f;
-	  roll   *= 0.01745f;
-	  float cosP = cos_approx(pitch);
-	  float sinP = sin_approx(pitch);
-
-	  float cosR = cos_approx(roll);
-	  float sinR = sin_approx(roll);
-
-      int16_t m_x = t->x*cosP - t->z*sinP;
-      int16_t m_y = t->x*sinP*sinR + t->y*cosR - t->z*cosP*sinR;
-	  t->x=m_x;
-	  t->y=m_y;
-*/
 }
 
+int qmc_read_raw(axis3_t *temp){
+	static uint8_t count_mag = 0;
+	static int16_t mx,my,mz;
+	static int16_t offset_mx =  100;
+	static int16_t offset_my = -272;
+	static int16_t offset_mz = -300;
+	uint8_t buf[2];
+	if(count_mag == 0){
+		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,2,1);
+		mx=((int16_t)buf[1]<<8|buf[0]) - offset_mx;
+		count_mag++;
+	}
+	else if(count_mag == 1){
+		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x02,1,buf,2,1);
+		my=((int16_t)buf[1]<<8|buf[0]) - offset_my;
+		count_mag++;
+	    }
+	else if(count_mag == 2){
+		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x04,1,buf,2,1);
+		mz=((int16_t)buf[1]<<8|buf[0]) - offset_mz;
+        temp->x = mx;
+		temp->y = my;
+		temp->z = mz;
+		count_mag = 0;
+		return 1;
+	}
+	return 0;
+}
+/*
 static int qmc_get_Heading(){
 	static uint8_t count_mag=0;
 	static int16_t mx,my,mz;
@@ -113,6 +122,7 @@ static int qmc_get_Heading(){
       }
 	  return 0;
 }
+*/
 
 int16_t max_val[] = {-32767,-32767,-32767};
 int16_t min_val[] = {32767, 32767, 32767};

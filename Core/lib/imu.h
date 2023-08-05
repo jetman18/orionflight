@@ -7,19 +7,13 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 #include "axis.h"
 
-typedef enum{
-    GYRO_250 = 0,
-    GYRO_500,
-    GYRO_1000,
-    GYRO_2000
-}GYRO_SCALE_;
+typedef struct {
+    float w;
+    float x;
+    float y;
+    float z;
+}quaternion_t;
 
-typedef enum{
-    ACC_2G = 0,
-    ACC_4G,
-    ACC_8G,
-    ACC_16G
-}ACC_SCALE_;
 
 typedef struct{
     float pitch;
@@ -30,17 +24,9 @@ typedef struct{
     float roll_velocity;
     float yaw_velocity;
 
-    float true_pitch;
-    float true_roll;
-    float true_yaw;
-
-    float error_pitch;
-    float error_roll;
-    float error_yaw;
-
-    int16_t raw_acc_x;
-    int16_t raw_acc_y;
-    int16_t raw_acc_z;
+    float acc_x;
+    float acc_y;
+    float acc_z;
 }attitude_t;
 
 typedef struct{
@@ -61,23 +47,14 @@ typedef struct imu_config{
     float gyro_slew_threshold;
     float acc_slew_threshold;
     uint32_t dt;
-    float imu_gyro_Sensitivity_Scale_Factor;
-    uint8_t imu_adrr;
-    uint16_t offset_cycle;
-    uint8_t imu_acc_res_cgf_val;
-    uint8_t imu_acc_data_res;
-    uint8_t imu_gyro_res_cgf_val;
-    uint8_t imu_gyro_data_res;
-    uint8_t imu_acc_regsiter_config;
-    uint8_t imu_gyro_regsiter_config;
+    float gyr_lsb;
 }imu_config_t;
 
 extern attitude_t quad_;
 extern imu_config_t config;
-
-void get_Acc_Angle(attitude_t *m);
+void mpu6050_init();
 void imu_update();
-void MPU_i2c_init(I2C_HandleTypeDef *i2cport);
+void gyro_read(faxis3_t *angle);
 #ifdef __cplusplus
 }
 #endif

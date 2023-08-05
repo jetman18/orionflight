@@ -119,15 +119,8 @@ typedef struct {
 
 } BMP280_HandleTypedef;
 
-/**
- * Initialize default parameters.
- * Default configuration:
- *      mode: NORAML
- *      filter: OFF
- *      oversampling: x4
- *      standby time: 250ms
- */
-void bmp280_init_default_params(bmp280_params_t *params);
+extern float bmp280_altitude;
+extern float bmp280_velocity;
 
 /**
  * Initialize BMP280 module, probes for the device, soft resets the device,
@@ -140,20 +133,9 @@ void bmp280_init_default_params(bmp280_params_t *params);
  *
  * This may be called again to soft reset the device and initialize it again.
  */
-bool bmp280_init(BMP280_HandleTypedef *dev, bmp280_params_t *params);
+bool bmp280_init();
 
-/**
- * Start measurement in forced mode.
- * The module remains in forced mode after this call.
- * Do not call this method in normal mode.
- */
-bool bmp280_force_measurement(BMP280_HandleTypedef *dev);
 
-/**
- * Check if BMP280 is busy with measuring temperature/pressure.
- * Return true if BMP280 is busy.
- */
-bool bmp280_is_measuring(BMP280_HandleTypedef *dev);
 
 /**
  * Read compensated temperature and pressure data:
@@ -165,7 +147,7 @@ bool bmp280_is_measuring(BMP280_HandleTypedef *dev);
  *  Humidity is optional and only read for the BME280, in percent relative
  *  humidity as a fixed point 22 bit interger and 10 bit fraction format.
  */
-bool bmp280_read_fixed(BMP280_HandleTypedef *dev, float *temp,float *press,float *altitude);
+bool bmp280_read_fixed();
 
 /**
  * Read compensated temperature and pressure data:

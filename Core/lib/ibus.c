@@ -35,27 +35,19 @@ const float ch4_scale = 0.4;
 void ibusInit(UART_HandleTypeDef *uartt,uint32_t baudrate){
 	uart = uartt;
     uartt->Init.BaudRate = baudrate;
-	HAL_UART_Init(uartt); //reInit
+	HAL_UART_Init(uartt);
 	HAL_UART_Receive_IT(uart, &rx_buff,1);
 }
 void ibusGet(){
     if(ibusFrameComplete()){
 		rx_ch1=ibusReadf(CH1,ch1_scale);
 		rx_ch2=ibusReadf(CH2,ch2_scale);
-		rx_ch1 = constrainf(rx_ch1,-max_rate,max_rate);//40
-		rx_ch2 = constrainf(rx_ch2,-max_rate,max_rate);
-		//rx_ch3=ibusReadf(CH3,ch3_scale);
+		//rx_ch1 = constrainf(rx_ch1,-max_rate,max_rate);//40
+		//rx_ch2 = constrainf(rx_ch2,-max_rate,max_rate);
 		throttle=ibusReadRawRC(CH3);
-		ch3_ = throttle;
-		ch3_ -=1000;
-		ch3_ = constrain(ch3_,0,1000);
-		//altitude scale
-        ch3_ *=1.5f;
 		altitude_stick=ibusReadRawRC(CH5);
 		flow_stick =  ibusReadRawRC(CH6);
-		vr_2 = (ibusReadRawRC(CH7)-1000)/200.0f;
 		rx_ch4 = ibusReadf(CH4,ch4_scale);
-		rx_ch4 = fapplyDeadband(rx_ch4,2);
      }
 	rx_yaw = rx_yaw + rx_ch4*(0.02f);
 }

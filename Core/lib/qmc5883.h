@@ -21,8 +21,7 @@ extern float gyro_yaw;
 
 void qmc5883_init(I2C_HandleTypeDef *i2cport);
 void magnet_sensor_calibrate();
-void qmc_get_raw();
-void compass_get_heading_();
+int qmc_read_raw(axis3_t *temp);
 #ifdef __cplusplus
 }
 #endif

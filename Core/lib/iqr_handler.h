@@ -41,7 +41,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if(GPIO_Pin == GPIO_PIN_8){
-        hc_sr04_callback();
+        //hc_sr04_callback();
     }
  /*
    else if(GPIO_Pin == GPIO_PIN_0){

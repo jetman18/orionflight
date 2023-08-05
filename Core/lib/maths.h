@@ -36,6 +36,7 @@
 #define M_EULERf    2.71828182845904523536f
 #define ROUND_NUM(x,y) (float)((int)(x*pow(10,y)))/(pow(10,y))
 #define RAD    (M_PIf / 180.0f)
+#define DEG    ( 180.0f/M_PIf )
 #define DEGREES_TO_DECIDEGREES(angle) ((angle) * 10)
 #define DECIDEGREES_TO_DEGREES(angle) ((angle) / 10)
 #define DECIDEGREES_TO_RADIANS(angle) ((angle) / 10.0f * 0.0174532925f)
@@ -102,6 +103,7 @@ int gcd(int num, int denom);
 int32_t applyDeadband(int32_t value, int32_t deadband);
 float fapplyDeadband(float value, float deadband);
 
+float invSqrt_(float x);
 void devClear(stdev_t *dev);
 void devPush(stdev_t *dev, float x);
 float devVariance(stdev_t *dev);
@@ -129,7 +131,9 @@ float sin_approx(float x);
 float cos_approx(float x);
 float atan2_approx(float y, float x);
 float acos_approx(float x);
+float asin_approx(float x);
 #define tan_approx(x)       (sin_approx(x) / cos_approx(x))
+#define asin_approx(x)  tan_approx(x/(1-x*x))
 float exp_approx(float val);
 float log_approx(float val);
 float pow_approx(float a, float b);

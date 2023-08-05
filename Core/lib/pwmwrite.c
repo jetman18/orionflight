@@ -6,9 +6,6 @@
 #define PWM_RELOAD_AFFTER 2200     // 2200 US
 #define ONESHOT_RELOAD_AFFTER 400  //400 US  2500HZ
 
-
-extern uint16_t moto1,moto2,moto3,moto4;
-
 /**timer pwm
  *
  */
