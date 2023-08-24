@@ -10,19 +10,18 @@ attitude_t AHRS;
 float integralFBx;
 float integralFBy;
 float integralFBz;
-float accx,accy,accz;
-float acc_p,acc_r;
 float acc_Eframe[3];
+float accex,accey,accez;
 static float q0=1,q1,q2,q3;
 static const float Ki = 0;
 static const float Kp = 20;
 const float Dt_ahrs = 0.002f;
 float dcm[3][3];
-static float pitch,roll,yaw;
 static axis3_t acce;
 static faxis3_t gyr;
 static axis3_t mag;
-
+float acc_pitch;
+float acc_roll;
 void ahrs_update(){
 	float norm;
 	float vx, vy, vz;
@@ -33,25 +32,24 @@ void ahrs_update(){
     float wx,wy,wz,mx,my,mz;
 	float emx,emy,emz;
 
-
-	gyro_read(&gyr);
+    gyro_read(&gyr);
 	gx = gyr.x * RAD;
 	gy = gyr.y * RAD;
 	gz = gyr.z * RAD;
-    acc_read_raw(&acce);
+
+	acc_read_raw(&acce);
 	acc_Bframe[X] = (float)acce.x;
 	acc_Bframe[Y] = (float)acce.y;
 	acc_Bframe[Z] = (float)acce.z;
 
-	if(!((acce.x == 0.0f) && (acce.y == 0.0f) && (acce.z == 0.0f))) {
+	if(!((acce.x == 0) && (acce.y == 0) && (acce.z == 0))) {
+		norm = invSqrt_(acce.x * acce.x + acce.y * acce.y + acce.z * acce.z);
+		accex = acce.x * norm;
+		accey = acce.y * norm;
+		accez = acce.z * norm;
 
-		accx = acce.x * 0.001f;
-		accy = acce.y * 0.001f;
-		accz = acce.z * 0.001f;
-		norm = invSqrt_(accx * accx + accy * accy + accz * accz);
-		accx = accx * norm;
-		accy = accy * norm;
-		accz = accz * norm;
+		acc_pitch  =  atan2_approx(-accey,accez)*DEG;
+		acc_roll    = atan2_approx(-accex, (1/invSqrt_(accey * accey + accez * accez)))*DEG;
 
         if(USE_MAG && qmc_read_raw(&mag)){
 			norm = invSqrt_(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
@@ -81,9 +79,9 @@ void ahrs_update(){
 		vy = dcm[1][2];
 		vz = dcm[2][2];
         
-		ex = (accy * vz - accz * vy) + emx;
-		ey = (accz * vx - accx * vz) + emy;
-		ez = (accx * vy - accy * vx) + emz;
+		ex = (accey * vz - accez * vy) + emx;
+		ey = (accez * vx - accex * vz) + emy;
+		ez = (accex * vy - accey * vx) + emz;
 
 		if(Ki > 0.0f) {
 			integralFBx += Ki * ex * Dt_ahrs;
@@ -145,8 +143,8 @@ void ahrs_update(){
 	acc_Eframe[Y] = acc_Eframe[Y]/16384.0f*9.53f;
 	acc_Eframe[Z] = acc_Eframe[Z]/16384.0f*9.53f - 9.82f;
     // Quaternion to euler angle    // deg
-	AHRS.roll  =  atan2_approx(dcm[1][2],dcm[2][2]) * DEG;
-	AHRS.pitch = atan2_approx(-dcm[0][2],sqrtf(1 - dcm[0][2]*dcm[0][2])) * DEG;
+	AHRS.roll  = atan2_approx(-dcm[0][2],sqrtf(1 - dcm[0][2]*dcm[0][2])) * DEG;
+	AHRS.pitch = atan2_approx(-dcm[1][2],dcm[2][2]) * DEG;
 	AHRS.yaw   = atan2_approx(dcm[0][1],dcm[0][0]) * DEG;
 	AHRS.acc_x = fapplyDeadband(acc_Eframe[X],0.05);  // dead band 0.05 m/ss
     AHRS.acc_y = fapplyDeadband(acc_Eframe[Y],0.05);

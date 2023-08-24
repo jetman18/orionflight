@@ -8,14 +8,6 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 #include "tim.h"
 
-extern TIM_HandleTypeDef *htimmz;
-extern uint32_t micross;
-
-#define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
-#define TIME_CALLBACK() (micross += 65535UL)
-#define micros() (uint32_t)((micross) + (__HAL_TIM_GET_COUNTER(htimmz)))
-#define millis()  (uint32_t)(micross/1000UL)
-
 typedef struct time{
     uint8_t hour;
     uint8_t min;
@@ -30,9 +22,18 @@ typedef struct {
     uint32_t period;
 } task_t;
 
+
+extern TIM_HandleTypeDef *htimmz;
+extern uint32_t micross;
+extern bootTime_t boottime;
+
+#define HZ_TO_MICRO(hz)  (uint32_t)(((1.0f)/(hz))*1000000)
+#define TIME_CALLBACK() (micross += 65535UL)
+#define micros() (uint32_t)((micross) + (__HAL_TIM_GET_COUNTER(htimmz)))
+#define millis()  (uint32_t)(micross/1000UL)
+
 void start_scheduler();
 void init_sche(TIM_HandleTypeDef *htimz);
-bootTime_t getBootTime();
 void delay_us(uint32_t);
 void delay_ms(uint32_t);
 #ifdef __cplusplus

@@ -45,9 +45,9 @@ void qmc_get_raw(axis3_t *axis){
 int qmc_read_raw(axis3_t *temp){
 	static uint8_t count_mag = 0;
 	static int16_t mx,my,mz;
-	static int16_t offset_mx =  100;
-	static int16_t offset_my = -272;
-	static int16_t offset_mz = -300;
+	static int16_t offset_mx =  0;
+	static int16_t offset_my =  0;
+	static int16_t offset_mz =  0;
 	uint8_t buf[2];
 	if(count_mag == 0){
 		HAL_I2C_Mem_Read(qmc_i2cport,qmc_addres,0x00,1,buf,2,1);

@@ -6,10 +6,9 @@ extern "C" {
 #endif
 
 #include "stdio.h"
-
-void startMeasure();
-int8_t ms5611Detect();
-
+#include "i2c.h"
+void  ms5611_init(I2C_HandleTypeDef *hi2c2);
+void ms5611_start();
 #ifdef __cplusplus
 }
 #endif

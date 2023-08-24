@@ -12,12 +12,9 @@ baud 57600
 B5 62 06 00 14 00 01 00 00 00 D0 08 00 00 00 E1 00 00 01 00 01 00 00 00 00 00 D6 8D
 */
 #include "stm32f1xx_hal.h"
-#define LON 1
-#define LAT 0
-/******************************************/
 typedef struct gps_data{
     uint8_t   fix;
-    float    coord[2];
+    int32_t    coord[2];
     uint16_t  altitude;
     uint32_t  HorizontalAcc;
     uint32_t  VerticalAcc;
@@ -26,8 +23,6 @@ typedef struct gps_data{
     uint16_t  ground_course;
     uint16_t  coord_update_time;
 }gpsData_t;
-
-extern gpsData_t gps_t;
 void gpsInit(UART_HandleTypeDef *uartt,uint32_t baudrate);
 void gpsCallback(void);
 

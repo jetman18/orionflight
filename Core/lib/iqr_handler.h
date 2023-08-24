@@ -10,16 +10,16 @@ extern "C" {
 #include "mavlink_handler.h"
 #include "hc_sr04.h"
 #include "ibus.h"
-#include "scheduler.h"
+#include "../quadrotor/scheduler.h"
 #include "ppmreceiver.h"
-#include "opticalflow.h"
+#include "../quadrotor/opticalflow.h"
 // IQR function
 //----------------------------------IQR--Handler-----------------------------
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	/* ibus */
-    if(huart == &huart2)
+    if(huart == &huart1)
 	{
         ibusCallback();
     }                                                                                                                           //
@@ -32,7 +32,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	// ibus
-    if(huart == &huart2)
+    if(huart == &huart1)
 	{
     	mav_tx_cpl_callback();
     }                                                                                                                          //
@@ -51,7 +51,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
-	if(htim == &htim3)
+	if(htim == &htim4)
 	{
 		TIME_CALLBACK();
 	}

@@ -44,12 +44,5 @@ void motoIdle(){
 	__HAL_TIM_SetCompare (htimm,ch3,1000);
 	__HAL_TIM_SetCompare (htimm,ch4,1000);
 }
-void pwm2esc(){
-	__HAL_TIM_SetCompare (htimm,ch1,moto1);
-	__HAL_TIM_SetCompare (htimm,ch2,moto2);
-	__HAL_TIM_SetCompare (htimm,ch3,moto3);
-	__HAL_TIM_SetCompare (htimm,ch4,moto4);
-
-};
 
 

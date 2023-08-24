@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2022 STMicroelectronics.
+  * Copyright (c) 2023 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -32,12 +32,15 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+extern I2C_HandleTypeDef hi2c1;
+
 extern I2C_HandleTypeDef hi2c2;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+void MX_I2C1_Init(void);
 void MX_I2C2_Init(void);
 
 /* USER CODE BEGIN Prototypes */

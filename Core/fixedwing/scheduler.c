@@ -9,37 +9,37 @@
 #include "scheduler.h"
 #include "pwmwrite.h"
 #include "pid.h"
-#include "bmp280.h"
+#include "ms5611.h"
 #include "ibus.h"
 #include "gps.h"
 #include "hc_sr04.h"
-#include "opticalflow.h"
+#include "../quadrotor/opticalflow.h"
 #include "../quadrotor/config.h"
 #include "mavlink_handler.h"
 #include "mpu6500.h"
 #include "ms5611.h"
-#include "kalman.h"
+#include "../quadrotor/position.h"
 #include "ahrs.h"
+#include  "sensordetect.h"
 #define LOOP_US  2000U
-#define MAX_LOOP_BREAK_US  1700U
+#define MAX_LOOP_BREAK_US  1800U
 
-bootTime_t t;
 TIM_HandleTypeDef *htimmz;
 uint32_t micross;
 uint32_t max_excution_time_us = 0;
 uint32_t num_tasks = 0;
+bootTime_t boottime;
+/************************************************/
+static void time_inf();
+static void blink_pc13();
 
-/*|Tasks list
- *|pr1 function ptr
- *|pr2 execution_time_us
- *|pr3 execution_cycle_us
- *|pr4 last_exec_time_us
- *|pr5 period
- ************************************************/
 task_t task[]={ 
     {ahrs_update,      0,0,0,1}, /*  imu task 500 hz*/
 
   //{pidUpdate,       0,0,0,1},/*  pid task  500 hz*/
+
+	//{ms5611_start,         0,0,0,2},/*  pid task  5 hz*/
+	{blink_pc13,         0,0,0,250},/*  pid task  5 hz*/
 
   //{pwm2esc,         0,0,0,1},/*  esc task  500 hz*/
 
@@ -50,18 +50,21 @@ task_t task[]={
  // {hc_sr04_run,     0,0,0,13},/*  sr-hc04  task  40 hz*/
 };
 
-void init_sche(TIM_HandleTypeDef *htimz){
+int16_t gyx_offset;
+void init_sche(TIM_HandleTypeDef *htimz)
+{
 	htimmz = htimz;
+	i2cDectect(&hi2c2);
+	//ms5611_init(&hi2c2);
 	HAL_TIM_Base_Start_IT(htimmz);
-	initPWM(&htim4);
-	ibusInit(&huart2,115200);
+	initPWM(&htim3);
+	//ibusInit(&huart2,115200);
 	//mavlinkInit(SYS_ID,0,&huart2,115200);
-	mpu6050_init();
+	mpu_init();
 	motoIdle();
-	//qmc5883_init(&hi2c1);
-  bmp280_init();
+	//qmc5883_init(&hi2c2);
+    //bmp280_init();
 	PID_init_param();
-	//flowInit(&huart1,19200);
 	num_tasks  = sizeof(task)/sizeof(task_t);
 }
 
@@ -78,14 +81,6 @@ static uint16_t setoverFlow(int val,int flow_val){
     k = val - (l*k);
     return k;
 }
-bootTime_t getBootTime(){
-	static uint16_t sec_L  =0;
-  sec_L = millis()/1000;
-	t.sec   = setoverFlow(sec_L,59); 
-	t.min   = setoverFlow((sec_L/60),59); 
-	t.hour  = setoverFlow((sec_L/3600),23);
-	return t;
-}
 
 void delay_ms(uint32_t val)
 {
@@ -97,8 +92,6 @@ void delay_us(uint32_t val){
   time_us = micros();
   while((micros() - time_us)<val);
 }
-
-
 
 void start_scheduler() {
   static int counter = 0;
@@ -120,5 +113,17 @@ void start_scheduler() {
   max_excution_time_us = total_execution_time_us;
   counter ++;
   if(counter == 499) counter = 0;
-  wait();   //2000 us
+  wait(); 
+}
+/**********************************************************/
+static void blink_pc13()
+{
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+}
+static void time_inf(){
+  static uint16_t sec_L  =0;
+  sec_L = millis()/1000;
+  boottime.sec   = setoverFlow(sec_L,59);
+  boottime.min   = setoverFlow((sec_L/60),59);
+  boottime.hour  = setoverFlow((sec_L/3600),23);
 }

@@ -1,7 +1,7 @@
 
 #include "bmp280.h"
 #include "math.h"
-#include "scheduler.h"
+#include "../quadrotor/scheduler.h"
 #include "i2c.h"
 /**
  * BMP280 registers

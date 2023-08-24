@@ -3,12 +3,14 @@
 #include "string.h"
 #include "stm32f1xx_hal.h"
 #include "stdio.h"
-#include "scheduler.h"
+#include "../quadrotor/scheduler.h"
 #include "gpsconfig.h"
+#include "maths.h"
 
-#define false 0
-#define true  1
-
+#define FALSE 0
+#define TRUE  1
+#define LON 1
+#define LAT 0
 enum {
     PREAMBLE1 = 0xb5,
     PREAMBLE2 = 0x62,
@@ -128,26 +130,6 @@ static uint16_t _payload_counter;
 
 #define UBLOX_BUFFER_SIZE 200
 
-
-static UART_HandleTypeDef *uarttt;
-static uint8_t buffe;
-
-/*init */
-void gpsInit(UART_HandleTypeDef *uartt,uint32_t baudrate){
-	uarttt = uartt;
-    _payload_length = 0;
-    _payload_counter = 0;
-    _msg_id =0;
-    _step = 0;
-    HAL_UART_Transmit(uarttt,ubloxInit,sizeof(ubloxInit),10000);
-    HAL_Delay(10);
-    HAL_UART_Transmit(uarttt,uart57600,sizeof(uart57600),1000);
-    HAL_Delay(10);
-    uarttt->Init.BaudRate = baudrate;
-	HAL_UART_Init(uarttt); //reInit
-	HAL_UART_Receive_IT(uarttt, &buffe,1);
-}
-
 static union {
     ubx_nav_posllh posllh;
     ubx_nav_status status;
@@ -165,20 +147,16 @@ static void _update_checksum(uint8_t *data, uint8_t len, uint8_t *ck_a, uint8_t 
         data++;
     }
 }
-gpsData_t gps_t;
-gpsData_t gpsGetdata(){
-    return gps_t;
-}
+static uint8_t _new_position;
+static gpsData_t gps_t;
 static uint8_t UBLOX_parse_gps(){
-    
-    static uint8_t _new_position;
     static uint8_t _new_speed;
     static uint8_t next_fix;
     static uint32_t lastTime;
     switch (_msg_id) {
         case MSG_POSLLH:
-            gps_t.coord[LON] = (float)(_buffer.posllh.longitude)/10000000;
-            gps_t.coord[LAT] = (float)(_buffer.posllh.latitude)/10000000;
+            gps_t.coord[LON] = _buffer.posllh.longitude;
+            gps_t.coord[LAT] = _buffer.posllh.latitude;
             gps_t.altitude = _buffer.posllh.altitude_msl / 10 / 100;  //alt in m
             //gps_t.HorizontalAcc = _buffer.posllh.horizontal_accuracy;
             //gps_t.VerticalAcc = _buffer.posllh.vertical_accuracy;
@@ -189,25 +167,25 @@ static uint8_t UBLOX_parse_gps(){
 
             // if (!sensors(SENSOR_BARO) && f.FIXED_WING)
             //    EstAlt = (altitude - home[ALT]) * 100;    // Use values Based on GPS
-            _new_position = true;
+            _new_position = TRUE;
             break;
         case MSG_STATUS:
             //next_fix = (_buffer.status.fix_status & NAV_STATUS_FIX_VALID) && (_buffer.status.fix_type == FIX_3D);
             //if (!next_fix)
-            //    gps_t.fix = false;
+            //    gps_t.fix = FALSE;
             gps_t.fix = _buffer.status.fix_type;
             break;
         case MSG_SOL:
             //next_fix = (_buffer.solution.fix_status & NAV_STATUS_FIX_VALID) && (_buffer.solution.fix_type == FIX_3D);
             //if (!next_fix)
-            //    gps_t.fix = false;
+            //    gps_t.fix = FALSE;
             //gps_t.fix = _buffer.solution.fix_type;
             gps_t.numSat = _buffer.solution.satellites;
             break;
         case MSG_VELNED:
             gps_t.speed = _buffer.velned.speed_2d;    // cm/s
             gps_t.ground_course = (uint16_t) (_buffer.velned.heading_2d / 10000);     // Heading 2D deg * 100000 rescaled to deg * 10
-            _new_speed = true;
+            _new_speed = TRUE;
             //if (!sensors(SENSOR_MAG) && speed > 100) {
             //    ground_course = wrap_18000(ground_course * 10) / 10;
             //    heading = ground_course / 10;    // Use values Based on GPS if we are moving.
@@ -230,19 +208,19 @@ static uint8_t UBLOX_parse_gps(){
             */
             break;
         default:
-            return false;
+            return FALSE;
     }
     if (_new_position && _new_speed) {
-        _new_speed = _new_position = false;
-        return true;
+        _new_speed = _new_position = FALSE;
+        return TRUE;
     }
-    return false;
+    return FALSE;
 }
 
 
 static uint8_t gpsNewFrameUBLOX(uint8_t data)
 {
-    uint8_t parsed = false;
+    uint8_t parsed = FALSE;
     static uint8_t _ck_a;
     static uint8_t _ck_b;
 
@@ -298,13 +276,82 @@ static uint8_t gpsNewFrameUBLOX(uint8_t data)
             if (_ck_b != data)
                 break;            
             if (UBLOX_parse_gps())
-                parsed = true;
+                parsed = TRUE;
     } 
     return parsed;
 }
-//------------------
+//---------callback function---------
+uint8_t char_;
 void gpsCallback()
 {
-   gpsNewFrameUBLOX(buffe);
-   HAL_UART_Receive_IT(uarttt, &buffe,1);
+   gpsNewFrameUBLOX(char_);
+   //HAL_UART_Receive_IT(uarttt, &char_,1);
 }
+
+
+#define  EARTH_RADIUS 63781370 // m
+
+
+//----------------------------------------
+static int32_t home_latitude;
+static int32_t home_longitude;
+//
+static UART_HandleTypeDef *uarttt = NULL;
+static uint16_t Dt_gps;
+/* Cal velocity */
+static float v_lat;  //   cm/s
+static float v_lon;  //   cm/s
+static void GPS_update_home_position(void);
+static void GPS_calc_velocity(void)
+{
+    static int32_t last_Longitude,last_Latitude;
+    int32_t temp_lat,temp_lon;
+    temp_lat = gps_t.coord[LAT] - last_Latitude;
+    temp_lon = gps_t.coord[LON] - last_Longitude;
+    last_Longitude = gps_t.coord[LON];
+    last_Latitude  = gps_t.coord[LAT];
+    if(temp_lat == gps_t.coord[LAT] && temp_lon == gps_t.coord[LON])
+        return;
+    float v_scale = RAD*(float)EARTH_RADIUS/1000000;
+    v_lat = v_lat*v_scale;
+    v_lon = v_lon*v_scale;
+    v_lat /= (Dt_gps/1000);
+    v_lon /= (Dt_gps/1000);
+}
+
+/* Distance and bearing to next waypoint*/
+static void GPS_distance_cm_bearing(int32_t *lat1, int32_t *lon1, int32_t *lat2, int32_t *lon2, int32_t *dist, int32_t *bearing)
+{
+
+}
+void GPS_thread()
+{
+    static uint32_t p_time; 
+    Dt_gps = millis() -  p_time;
+    p_time = millis();
+    if(Dt_gps > 2000)
+        return;   
+    // calculate velocity
+    GPS_calc_velocity();
+ 
+}
+
+
+
+void gpsInit(UART_HandleTypeDef *uartt,uint32_t baudrate)
+{
+	uarttt = uartt;
+    _payload_length = 0;
+    _payload_counter = 0;
+    _msg_id =0;
+    _step = 0;
+
+    HAL_UART_Transmit(uarttt,ubloxInit,sizeof(ubloxInit),10000);
+    HAL_Delay(10);
+    HAL_UART_Transmit(uarttt,uart57600,sizeof(uart57600),1000);
+    HAL_Delay(10);
+    uarttt->Init.BaudRate = baudrate;
+	HAL_UART_Init(uarttt); //
+	HAL_UART_Receive_IT(uarttt, &char_,1);
+}
+

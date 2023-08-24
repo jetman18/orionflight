@@ -174,7 +174,7 @@
 			<resource resourceType="PROJECT" workspacePath="/mario"/>
 		</configuration>
 		<configuration configurationName="Release">
-			<resource resourceType="PROJECT" workspacePath="/mario "/>
+			<resource resourceType="PROJECT" workspacePath="/mario"/>
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>

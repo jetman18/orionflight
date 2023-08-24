@@ -16,12 +16,12 @@ typedef struct {
 
 
 typedef struct{
-    float pitch;
-	float roll;
+    float roll;
+	float pitch;
     float yaw;
 
-    float pitch_velocity;
     float roll_velocity;
+    float pitch_velocity;
     float yaw_velocity;
 
     float acc_x;
@@ -52,7 +52,7 @@ typedef struct imu_config{
 
 extern attitude_t quad_;
 extern imu_config_t config;
-void mpu6050_init();
+void mpu_init();
 void imu_update();
 void gyro_read(faxis3_t *angle);
 #ifdef __cplusplus

@@ -1,14 +1,15 @@
-#include <log.h>
+#include "log.h"
 #include "imu.h"
 #include "stm32f1xx_hal.h"
 #include "maths.h"
 #include "i2c.h"
 #include "math.h"
 #include "filter.h"
-#include "scheduler.h"
+#include "../quadrotor/scheduler.h"
 #include "axis.h"
 #include "../quadrotor/config.h"
 #include "mpu6500.h"
+#include "qmc5883.h"
 //#define SPI
 #define ACCSMOOTH
 #define OFFSET_CYCLE    1000
@@ -51,9 +52,10 @@ void gyro_read(faxis3_t *angle){
     float temp = (float)config.dt*(1e-06f);
 	float gain_lpf =temp / (RC + temp);
 
-	float x_  = ((float)(p.x - gyr_offs_x))/config.gyr_lsb;
-	float y_ =  ((float)(p.y - gyr_offs_y))/config.gyr_lsb;
-	float z_  = ((float)(p.z - gyr_offs_z))/config.gyr_lsb;
+
+	float x_  = ((float)(p.x))/config.gyr_lsb;
+	float y_ =  ((float)(p.y))/config.gyr_lsb;
+	float z_  = ((float)(p.z))/config.gyr_lsb;
 
     gyro_v[X] = gyro_v[X] + gain_lpf*(x_ - gyro_v[X]);
     gyro_v[Y] = gyro_v[Y] + gain_lpf*(y_ - gyro_v[Y]);
@@ -62,13 +64,12 @@ void gyro_read(faxis3_t *angle){
     angle->x = gyro_v[X];
     angle->y = gyro_v[Y];
     angle->z = gyro_v[Z];
-
 }
-
+static int32_t store_gyro[3];
+axis3_t gyro_;
+int16_t count_ = 0;
 void gyro_zero_offset(){
-	static int32_t store_gyro[3];
-	axis3_t gyro_;
-	uint16_t count_ = 0;
+
 
 	for(int i=0;i<OFFSET_CYCLE;i++){
 		if(!gyro_read_raw(&gyro_)){
@@ -87,8 +88,8 @@ void gyro_zero_offset(){
     }
 }
 
-void mpu6050_init(){
-   MPU_i2c_init(&hi2c2);
+void mpu_init(){
+   mpu6500_init();
    HAL_Delay(3000);
    gyro_zero_offset();
 }
@@ -155,15 +156,17 @@ void get_Acc_Angle(attitude_t *m){
 	m->roll   = atan2_approx(-acc.x, (1/invSqrt_(acc.y * acc.y + acc.z * acc.z)))*180/M_PIf;
 }
 
-static axis3_t  acce;
+
 static faxis3_t accSmooth;
+axis3_t gyro,acce;
+static axis3_t temp;
 void imu_update(){
+	qmc_read_raw(&temp);
+	//gyro_read(&gyro);
+
+	/*
     static faxis3_t vect = {0,0,1};
     static float k_ = 1;
-    static float er_gx,er_gy,er_gz;
-    static float I_er_gx,I_er_gy,I_er_gz;
-    static float kp = 1.0f;
-    static float ki = 0;
 	static faxis3_t gyro,acc;
     float Dt = config.dt*(1e-06f);
 	uint32_t sum;
@@ -205,5 +208,6 @@ void imu_update(){
 	quad_.roll   = roll_  - 0.5f;
     quad_.pitch  = pitch_ + 1.0f;
     quad_.yaw   += gyro.z*config.dt*(1e-06f);
+    */
 
 }

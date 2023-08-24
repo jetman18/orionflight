@@ -1,5 +1,5 @@
 #include "hc_sr04.h"
-#include "scheduler.h"
+#include "../quadrotor/scheduler.h"
 #include "imu.h"
 #include "maths.h"
 #include "ibus.h"

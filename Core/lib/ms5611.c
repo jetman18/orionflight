@@ -1,16 +1,9 @@
 #include "ms5611.h"
-/*
- * This file is part of baseflight
- * Licensed under GPL V3 or modified DCL - see https://github.com/multiwii/baseflight/blob/master/README.md
- */
+#include "scheduler.h"
+#include "maths.h"
 #include"i2c.h"
 
-// MS5611, Standard address 0x77
-#define MS5611_ADDR                 (0x77<<1)
-// Autodetect: turn off BMP085 while initializing ms5611 and check PROM crc to confirm device
-#define BMP085_OFF                  digitalLo(BARO_GPIO, BARO_PIN);
-#define BMP085_ON                   digitalHi(BARO_GPIO, BARO_PIN);
-
+#define MS5611_ADDR            (0x77<<1)
 #define CMD_RESET               0x1E // ADC reset command
 #define CMD_ADC_READ            0x00 // ADC read command
 #define CMD_ADC_CONV            0x40 // ADC conversion command
@@ -23,165 +16,208 @@
 #define CMD_ADC_4096            0x08 // ADC OSR=4096
 #define CMD_PROM_RD             0xA0 // Prom read command
 #define PROM_NB                 8
+#define SAMPLERATIO             0x00  //sampleRatio
+#define _PTYPE                  0  //unit type pressure
+#define _TTYPE                  0  //unit type T
+#define _SEALEVELPRESS          101325
 
+int16_t _POFFSET = 0; // Pressure offset value where 1000 = 1000 Pascals (10.00 millibars)
+int16_t _TOFFSET = 0; // Temperature offset value where 2000 = 20.00°C
 static void ms5611_reset(void);
 static uint16_t ms5611_prom(int8_t coef_num);
-static int8_t ms5611_crc(uint16_t *prom);
+static uint8_t ms5611_crc(uint16_t *prom);
+static uint8_t ms5611_read_crc(void);
+static int8_t ms5611_check_crc(void);
 static uint32_t ms5611_read_adc(void);
-static void ms5611_start_ut(void);
-static void ms5611_get_ut(void);
-static void ms5611_start_up(void);
-static void ms5611_get_up(void);
-static void ms5611_calculate(int32_t *pressure, int32_t *temperature);
+static void send_cmd(uint8_t);
+static void ms_5611_readout();
+int32_t PRESS;
+float TEMP;
+float alt;
 
-static uint32_t ms5611_ut;  // static result of temperature measurement
-static uint32_t ms5611_up;  // static result of pressure measurement
 static uint16_t ms5611_c[PROM_NB];  // on-chip ROM
-static uint8_t ms5611_osr = CMD_ADC_4096;
 
+static I2C_HandleTypeDef *hi2c = NULL;
+static uint32_t baro_timer;
+static float seaLevelPress;
+static uint8_t readStep;
 
-
-int8_t ms5611Detect()
+void ms5611_init(I2C_HandleTypeDef *hi2c2)
 {
-    int8_t ack = 0;
-    uint8_t sig;
-
-    // BMP085 is disabled. If we have a MS5611, it will reply. if no reply, means either
-    // we have BMP085 or no baro at all.
-    //ack = i2cRead(MS5611_ADDR, CMD_PROM_RD, 1, &sig);
-    ack = HAL_I2C_Master_Receive(&hi2c2,CMD_PROM_RD, &sig,1,1);
-    if (!ack)
-        return 0;
-
+    hi2c = hi2c2;
+    readStep = 0;
+    baro_timer = millis();
+    // reset sensor
     ms5611_reset();
     // read all coefficients
     for (int i = 0; i < PROM_NB; i++)
         ms5611_c[i] = ms5611_prom(i);
-    // check crc, bail out if wrong - we are probably talking to BMP085 w/o XCLR line!
-    if (ms5611_crc(ms5611_c) != 0)
-        return 0;
-
-    return 1;
 }
-
 static void ms5611_reset(void)
 {
 	uint8_t data = CMD_RESET;
-    HAL_I2C_Master_Transmit(&hi2c2,MS5611_ADDR,&data,1,1);
+    HAL_I2C_Master_Transmit(hi2c,MS5611_ADDR,&data,1,1);
     HAL_Delay(2);
 }
 
 static uint16_t ms5611_prom(int8_t coef_num)
 {
     uint8_t rxbuf[2] = { 0, 0 };
-    HAL_I2C_Mem_Read(&hi2c2,MS5611_ADDR,CMD_PROM_RD + coef_num * 2,1,rxbuf,2,1);
-    //i2cRead(MS5611_ADDR, CMD_PROM_RD + coef_num * 2, 2, rxbuf); // send PROM READ command
+    HAL_I2C_Mem_Read(hi2c,MS5611_ADDR,CMD_PROM_RD + coef_num * 2,1,rxbuf,2,1);
     return rxbuf[0] << 8 | rxbuf[1];
 }
-
-static int8_t ms5611_crc(uint16_t *prom)
+static void send_cmd(uint8_t c)
 {
-    int32_t i, j;
-    uint32_t res = 0;
-    uint8_t zero = 1;
-    uint8_t crc = prom[7] & 0xF;
-    prom[7] &= 0xFF00;
+   HAL_I2C_Master_Transmit(hi2c,MS5611_ADDR,&c,1,10);
+}
 
-    // if eeprom is all zeros, we're probably fucked - BUT this will return valid CRC lol
-    for (i = 0; i < 8; i++) {
-        if (prom[i] != 0)
-            zero = 0;
-    }
-    if (zero)
-        return -1;
+static uint8_t ms5611_crc(uint16_t *n_prom)
+{
+    uint8_t n_bit;
+    int16_t cnt; // Simple counter
+    uint16_t n_rem; // CRC remainder
+    uint16_t crc_read; // Original value of the CRC
+    n_rem = 0x00;
+    crc_read = n_prom[7];	// Save original value of CRC
+    n_prom[7] = (0xFF00 & (n_prom[7])); // CRC byte is replaced by 0
+    for ( cnt = 0; cnt < 16; cnt++ )
+    {
+		// choose LSB or MSB
+        if ( cnt % 2 == 1 ) n_rem ^= (uint8_t)((n_prom[cnt>>1]) & 0x00FF);
+        else n_rem ^= (uint8_t)(n_prom[cnt>>1]>>8);
 
-    for (i = 0; i < 16; i++) {
-        if (i & 1)
-            res ^= ((prom[i >> 1]) & 0x00FF);
-        else
-            res ^= (prom[i >> 1] >> 8);
-        for (j = 8; j > 0; j--) {
-            if (res & 0x8000)
-                res ^= 0x1800;
-            res <<= 1;
+        for (n_bit=8; n_bit>0; n_bit--)
+        {
+            if (n_rem & (0x8000))
+            {
+            	n_rem=(n_rem<<1) ^ 0x3000;
+            }
+            else
+            {
+                n_rem=(n_rem<<1);
+            }
         }
-    }
-    prom[7] |= crc;
-    if (crc == ((res >> 12) & 0xF))
-        return 0;
-
-    return -1;
+   }
+}
+static uint8_t ms5611_read_crc(void)
+{
+    uint16_t crc_read = ( 0x000F & ( ms5611_c[7] ) );
+    return ( crc_read );
+}
+static int8_t ms5611_check_crc(void)
+{
+    int8_t status = 0;
+    if(ms5611_crc(ms5611_c) == ms5611_read_crc())
+         status = 1;
+    return status;
 }
 
 static uint32_t ms5611_read_adc(void)
-{
+{  
+    uint32_t value = 0;
     uint8_t rxbuf[3];
     rxbuf[0] = CMD_ADC_READ;
-    HAL_I2C_Master_Transmit(&hi2c2,MS5611_ADDR,rxbuf,1,1);
-    HAL_I2C_Master_Receive(&hi2c2,MS5611_ADDR,rxbuf,3,1);
-    return (rxbuf[0] << 16) | (rxbuf[1] << 8) | rxbuf[2];
+    HAL_I2C_Master_Transmit(hi2c,MS5611_ADDR,&rxbuf[0],1,10);
+    HAL_I2C_Master_Receive(hi2c,MS5611_ADDR,rxbuf,3,10);
+    value =  (rxbuf[0] << 16) | (rxbuf[1] << 8) | (rxbuf[2]);
+    return value;
 }
 
-static void ms5611_start_ut(void)
+uint32_t _D1 = 0; 
+uint32_t _D2 = 0; 
+void ms5611_start()
 {
-	uint8_t data = CMD_ADC_CONV + CMD_ADC_D2 + ms5611_osr;
-    HAL_I2C_Master_Transmit(&hi2c2,MS5611_ADDR,&data,1,1);
-    //i2cWrite(MS5611_ADDR, CMD_ADC_CONV + CMD_ADC_D2 + ms5611_osr, 1); // D2 (temperature) conversion start!
-}
+    switch (readStep){
+    case 0:
+        send_cmd(CMD_ADC_CONV + CMD_ADC_D2 + CMD_ADC_256);
+        _D1 = _D2 = 0;
+        readStep ++;
+        break;
+    case 1:
+        _D2 = ms5611_read_adc();
+        send_cmd(CMD_ADC_CONV + CMD_ADC_D1 + CMD_ADC_256);
+        readStep ++;
+        break;
+    case 2:
+        _D1 = ms5611_read_adc();
+        if (_D1 == 0 || _D2 == 0) { 
+        	readStep = 0;
+             break;
 
-static void ms5611_get_ut(void)
-{
-    ms5611_ut = ms5611_read_adc();
-}
-
-static void ms5611_start_up(void)
-{
-	uint8_t data = CMD_ADC_CONV + CMD_ADC_D1 + ms5611_osr;
-    HAL_I2C_Master_Transmit(&hi2c2,MS5611_ADDR,&data,1,1);
-    //i2cWrite(MS5611_ADDR, CMD_ADC_CONV + CMD_ADC_D1 + ms5611_osr, 1); // D1 (pressure) conversion start!
-}
-
-static void ms5611_get_up(void)
-{
-    ms5611_up = ms5611_read_adc();
-}
-
-static void ms5611_calculate(int32_t *pressure, int32_t *temperature)
-{
-    uint32_t press;
-    int64_t temp;
-    int64_t delt;
-    int32_t dT = (int64_t)ms5611_ut - ((uint64_t)ms5611_c[5] * 256);
-    int64_t off = ((int64_t)ms5611_c[2] << 16) + (((int64_t)ms5611_c[4] * dT) >> 7);
-    int64_t sens = ((int64_t)ms5611_c[1] << 15) + (((int64_t)ms5611_c[3] * dT) >> 8);
-    temp = 2000 + ((dT * (int64_t)ms5611_c[6]) >> 23);
-
-    if (temp < 2000) { // temperature lower than 20degC
-        delt = temp - 2000;
-        delt = 5 * delt * delt;
-        off -= delt >> 1;
-        sens -= delt >> 2;
-        if (temp < -1500) { // temperature lower than -15degC
-            delt = temp + 1500;
-            delt = delt * delt;
-            off -= 7 * delt;
-            sens -= (11 * delt) >> 1;
+        }else{
+            ms_5611_readout();
         }
+        readStep = 0;
+        break;
     }
-    press = ((((int64_t)ms5611_up * sens) >> 21) - off) >> 15;
 
-    if (pressure)
-        *pressure = press;
-    if (temperature)
-        *temperature = temp;
+}
+static void ms_5611_readout()
+{
+	// While sensor document states these variables should be int32 and int64 unless everything is
+	// int64 calculation errors occur.  To ensure compatibility across multiple platforms, I've chosen to
+	// make their types as doubles.
+	double dT = 0; // Difference in actual vs reference temperature
+	double OFF = 0; // Offset at actual temperature
+	double SENS = 0; //Sensitivy at actual temperature
+	
+	// When Pressure and Temperature start off as doubles, it tried to calculate it beyond it's precision
+	// keep it to int32_t and then multiply by 0.01 to get only the level of precision the sensor has.
+	int32_t pressure = 0;
+	int32_t temp = 0;
+
+	// Calculate 1st order pressure and temperature based on sensor used.
+	dT=(float)_D2-(float)ms5611_c[5]*256.0f; // _D2 - Tref = _D2 - C5 * 2^8
+	
+
+	OFF=(float)ms5611_c[2]*65536.0f+(dT*(float)ms5611_c[4])/128.0f; // OFFt1 + TCO * dT = C2 * 2^16 + (C4 * dT) / 2^7
+	SENS=(float)ms5611_c[1]*32768.0f+(dT*(float)ms5611_c[3])/256.0f; // SENSt1 + TCS * dT = C1 * 2^15 + (C3*dT) / 2^8
+	
+	temp=(2000.0f+(dT*(float)ms5611_c[6])/8388608.0f)+(float)_TOFFSET; // 20C + dT * TEMPSENS = 2000 + dT * C6 / 2^23
+	
+	// Perform higher order corrections based on sensor used.
+	double T2=0., OFF2=0., SENS2=0.;
+	if(temp<2000) {
+		T2=dT*dT/2147483648.0f; // dT^2 / 2^31
+
+		OFF2=5.0f*((temp-2000.0f)*(temp-2000.0f))/2.0f; // 5 * (temp - 2000)^2 / 2
+		SENS2=5.0f*((temp-2000.0f)*(temp-2000.0f))/4.0f; // 5 * (temp - 2000)^2 / 4
+	  
+	  if(temp<-1500.0f) {
+		OFF2+=7.0f*((temp+1500.0f)*(temp+1500.0f)); // OFF2 + 7 * (temp + 1500)^2
+		SENS2+=11.0f*((temp+1500.0f)*(temp+1500.0f))/2.0f; // SENS2 + 11 * (temp + 1500) ^2 /2
+	    
+	  }
+	}
+	// Apply any required offsets from higher order corrections
+	temp -= T2;
+	OFF  -= OFF2;
+	SENS -= SENS2;
+	
+	// Calculate pressure
+	 pressure=((_D1*SENS/2097152.0f-OFF)/32768.0f)+_POFFSET; // (((_D1*SENS)/pow(2,21)-OFF)/pow(2,15))
+	// Convert temperature to Celcius
+	TEMP = temp * 0.01f;
+    // press
+    PRESS = pressure;
+    // Altitude 
+    static float offalt =0;
+    static int8_t ss = 0;
+    float aalt =  44330. * (1. - pow(pressure / (float)_SEALEVELPRESS, 0.19029495));// - offalt;
+    if(aalt != 0 && ss ==0 ){
+    	offalt = aalt;
+        ss  =1;
+    }
+    alt = aalt;  //cm
 }
 
-int32_t pre,temp;
-void startMeasure(){
-    ms5611_start_ut();
-    ms5611_get_ut();
-    ms5611_calculate(&pre,&temp);
-    ms5611_start_up();
-    ms5611_get_up();
-    ms5611_calculate(&pre,&temp);
+static float ms5611_getSeaLevel(double altitude)
+{	
+	if (PRESS == 0) {
+		return -1;
+	}
+	
+   // seaLevelPress = press / pow((1.0 - (altitude / 44330.0)), 5.255);
+	
+	return seaLevelPress;
 }

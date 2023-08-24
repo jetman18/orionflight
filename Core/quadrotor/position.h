@@ -1,5 +1,5 @@
-#ifndef _KALMAN_
-#define _KALMAN_
+#ifndef _POSITION_
+#define _POSITION_
 
 #ifdef __cplusplus
 extern "C" {
@@ -7,7 +7,7 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 
 
-void imu_update_kalman();
+void estimate_position();
 
 #ifdef __cplusplus
 }
