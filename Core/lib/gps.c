@@ -3,7 +3,7 @@
 #include "string.h"
 #include "stm32f1xx_hal.h"
 #include "stdio.h"
-#include "../quadrotor/scheduler.h"
+#include "timer.h"
 #include "gpsconfig.h"
 #include "maths.h"
 

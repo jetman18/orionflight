@@ -1,6 +1,7 @@
 #ifndef _AXIS_H_
 #define _AXIS_H_
 #include "stdio.h"
+#include "stm32f1xx_hal.h"
 typedef enum {
     X = 0,
     Y,

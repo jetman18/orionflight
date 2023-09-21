@@ -1,13 +1,13 @@
 #include "pid.h"
 #include "filter.h"
 #include "maths.h"
-#include "../quadrotor/scheduler.h"
+#include "timer.h"
 #include "ahrs.h"
 #include "imu.h"
 #include "pwmwrite.h"
 #include "string.h"
-#include "../lib/pid.h"
-
+#include "pid.h"
+#include "ibus.h"
 #define MINIMUN_THROTTLE 1000U
 #define MAXIMUN_THROTTLE 2000U
 #define MINIMUN_THROTTLE_SET 1100U
@@ -44,8 +44,7 @@ void PID_init_parameters(){
 	pid_rate_yaw.I_deadband = 3.0f;
 	pid_rate_yaw.f_cut_D =0;
 }
-void pidUpdate()
-{  
+void pidUpdate(){
 static float roll_setpoint;
 static float  pitch_setpoint;
 static int pwm1,pwm2,pwm3,pwm4;
@@ -81,12 +80,13 @@ static int pwm1,pwm2,pwm3,pwm4;
 		    pwm3 = (int)throttle  - (int)pid_rate_pitch.PID + (int)pid_rate_roll.PID - (int)pid_rate_yaw.PID;
 		    pwm4 = (int)throttle  - (int)pid_rate_pitch.PID - (int)pid_rate_roll.PID + (int)pid_rate_yaw.PID;
         }
+        /*
         else{
 			pwm1 = hc04_Throttle + (int)Pid_altitude_t.PID + (int)pid_rate_pitch.PID - (int)pid_rate_roll.PID - (int)pid_rate_yaw.PID;
 			pwm2 = hc04_Throttle + (int)Pid_altitude_t.PID + (int)pid_rate_pitch.PID + (int)pid_rate_roll.PID + (int)pid_rate_yaw.PID;
 			pwm3 = hc04_Throttle + (int)Pid_altitude_t.PID - (int)pid_rate_pitch.PID + (int)pid_rate_roll.PID - (int)pid_rate_yaw.PID;
 			pwm4 = hc04_Throttle + (int)Pid_altitude_t.PID - (int)pid_rate_pitch.PID - (int)pid_rate_roll.PID + (int)pid_rate_yaw.PID;
-        }
+        }*/
         //float coss = cos_approx(AHRS.pitch*RAD)*cos_approx(AHRS.roll*RAD);
        // coss = constrainf(coss,0.85f,1.0f);
 
@@ -124,10 +124,10 @@ static int pwm1,pwm2,pwm3,pwm4;
 		moto3 = MINIMUN_THROTTLE;
 		moto4 = MINIMUN_THROTTLE;
 	   }
-	   writePwm(CH1,moto1);
-	   writePwm(CH2,moto2);
-	   writePwm(CH3,moto3);
-	   writePwm(CH4,moto4);
+	   writePwm(ch1,moto1);
+	   writePwm(ch2,moto2);
+	   writePwm(ch3,moto3);
+	   writePwm(ch4,moto4);
 	}
 
 

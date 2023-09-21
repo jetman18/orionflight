@@ -1,7 +1,7 @@
 #include "pid.h"
 #include "filter.h"
 #include "maths.h"
-#include "../quadrotor/scheduler.h"
+#include "timer.h"
 
 #define TOSEC    (1e-06f)
 void pidCalculate(pid__t *pid_temp,float sensor,float control,uint32_t Dt_time)

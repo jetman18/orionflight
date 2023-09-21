@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include "stm32f1xx.h"
 #include "stdio.h"
 
 typedef struct pid{

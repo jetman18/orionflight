@@ -1,8 +1,8 @@
 
 #include "bmp280.h"
 #include "math.h"
-#include "../quadrotor/scheduler.h"
-#include "i2c.h"
+#include "timer.h"
+#include "stm32f1xx_hal.h"
 /**
  * BMP280 registers
  */
@@ -99,7 +99,7 @@ bool bmp280_init() {
 
 
     devv.addr = BMP280_I2C_ADDRESS_0;
-	devv.i2c  = &hi2c2; 
+	//devv.i2c  = &hi2c2;
 	bmp280_init_default_params();
 
 	if (devv.addr != BMP280_I2C_ADDRESS_0

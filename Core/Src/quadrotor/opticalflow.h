@@ -13,7 +13,7 @@ extern "C" {
 
 #include"stdio.h"
 #include "usart.h"
-#include "pid.h"
+#include "../lib/pid.h"
 
 extern pid__t x_flow_t;
 extern pid__t y_flow_t;

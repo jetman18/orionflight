@@ -26,8 +26,7 @@ Core/lib/gps.o: ../Core/lib/gps.c ../Core/lib/gps.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h \
- ../Core/lib/scheduler.h ../Core/Inc/tim.h ../Core/Inc/main.h \
- ../Core/lib/gpsconfig.h ../Core/lib/maths.h
+ ../Core/lib/timer.h ../Core/lib/gpsconfig.h ../Core/lib/maths.h
 ../Core/lib/gps.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
 ../Core/Inc/stm32f1xx_hal_conf.h:
@@ -56,8 +55,6 @@ Core/lib/gps.o: ../Core/lib/gps.c ../Core/lib/gps.h \
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h:
-../Core/lib/scheduler.h:
-../Core/Inc/tim.h:
-../Core/Inc/main.h:
+../Core/lib/timer.h:
 ../Core/lib/gpsconfig.h:
 ../Core/lib/maths.h:

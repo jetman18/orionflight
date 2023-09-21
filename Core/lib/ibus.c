@@ -1,7 +1,6 @@
 #include "maths.h"
 #include "ibus.h"
-#include "scheduler.h"
-#include "usart.h"
+#include "timer.h"
 #include "imu.h"
 #define IBUS_BUFFSIZE 32
 #define IBUS_MAX_CHANNEL 8

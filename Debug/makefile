@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (10.3-2021.10)
+# Toolchain: GNU Tools for STM32 (11.3.rel1)
 ################################################################################
 
 -include ../makefile.init
@@ -10,10 +10,11 @@ RM := rm -rf
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include Drivers/STM32F1xx_HAL_Driver/Src/subdir.mk
--include Core/quadrotor/subdir.mk
 -include Core/lib/ssd1306/subdir.mk
 -include Core/lib/subdir.mk
 -include Core/Startup/subdir.mk
+-include Core/Src/quadrotor/subdir.mk
+-include Core/Src/fixedwing/subdir.mk
 -include Core/Src/subdir.mk
 -include objects.mk
 
@@ -66,8 +67,8 @@ all: main-build
 main-build: mario.elf secondary-outputs
 
 # Tool invocations
-mario.elf mario.map: $(OBJS) $(USER_OBJS) C:\Users\sudo\Documents\GitHub\orionflight\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "mario.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\sudo\Documents\GitHub\orionflight\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="mario.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+mario.elf mario.map: $(OBJS) $(USER_OBJS) C:\Users\tuan\Documents\GitHub\orionflight\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "mario.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\tuan\Documents\GitHub\orionflight\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="mario.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

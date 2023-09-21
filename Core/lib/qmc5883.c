@@ -4,7 +4,7 @@
 #include "i2c.h"
 #include "math.h"
 #include "filter.h"
-#include "scheduler.h"
+#include "timer.h"
 #include "imu.h"
 #include "axis.h"
 

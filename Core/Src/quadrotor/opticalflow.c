@@ -1,9 +1,9 @@
 #include "opticalflow.h"
-#include "imu.h"
-#include "maths.h"
-#include "hc_sr04.h"
+#include "../lib/imu.h"
+#include "../lib/maths.h"
+#include "../lib/hc_sr04.h"
 #include "math.h"
-#include "ibus.h"
+#include "../lib/ibus.h"
 static UART_HandleTypeDef *uart_;
 static uint8_t bytee;
 static uint8_t buf[5];

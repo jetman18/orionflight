@@ -2,12 +2,10 @@
 #include "imu.h"
 #include "stm32f1xx_hal.h"
 #include "maths.h"
-#include "i2c.h"
 #include "math.h"
 #include "filter.h"
-#include "../quadrotor/scheduler.h"
+#include "timer.h"
 #include "axis.h"
-#include "../quadrotor/config.h"
 #include "mpu6500.h"
 #include "qmc5883.h"
 //#define SPI
