@@ -35,6 +35,7 @@
 "./Core/lib/ppmreceiver.o"
 "./Core/lib/pwmwrite.o"
 "./Core/lib/qmc5883.o"
+"./Core/lib/timer.o"
 "./Core/lib/ssd1306/fonts.o"
 "./Core/lib/ssd1306/ssd1306.o"
 "./Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.o"

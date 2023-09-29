@@ -6,10 +6,6 @@ TIM_HandleTypeDef *htimmz;
 bootTime_t boottime;
 static uint16_t setoverFlow(int val,int flow_val);
 
-void delay_ms(uint32_t val)
-{
-	delay_us(val*1000);
-}
 
 void delay_us(uint32_t val){
 	static uint32_t time_us;
@@ -17,6 +13,10 @@ void delay_us(uint32_t val){
   while((micros() - time_us)<val);
 }
 
+void delay_ms(uint32_t val)
+{
+	delay_us(val*1000);
+}
 static uint16_t setoverFlow(int val,int flow_val){
     uint8_t k,l;
     l =flow_val + 1;

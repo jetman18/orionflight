@@ -20,7 +20,6 @@ static uint32_t micross;
 #define micros() (uint32_t)((micross) + (__HAL_TIM_GET_COUNTER(htimmz)))
 #define millis()  (uint32_t)(micross/1000UL)
 void timer_start(TIM_HandleTypeDef *htimz);
-
 #ifdef __cplusplus
 }
 #endif
