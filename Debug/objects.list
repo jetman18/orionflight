@@ -1,4 +1,5 @@
 "./Core/Src/fixedwing/fixedwing.o"
+"./Core/Src/fixedwing/fw_pid.o"
 "./Core/Src/fixedwing/navigation.o"
 "./Core/Src/fixedwing/scheduler.o"
 "./Core/Src/gpio.o"
