@@ -1,4 +1,4 @@
 # My own Flight controller
 
-# Video Demonstration
+# Demonstration
 https://youtu.be/7D9eUaouD7U
