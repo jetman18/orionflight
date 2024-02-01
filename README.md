@@ -1,10 +1,10 @@
 #Quadrotor flight controller
- Hardware
+#Hardware
  - Stm32f103c8t6
  - MPU6050
  - F330 Frame
- - Motor Emax 2206 2200kv
- - Lipo 3s 2200Mah battery
+ - Motor Emax 2205 2200kv
+ - Lipo 3s 2200Mah 
  - ESC 12A blheli
 
 ![exampl](./resource/img2.jpg)
