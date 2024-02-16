@@ -1,5 +1,5 @@
-#Quadrotor flight controller
-#Hardware
+# Quadrotor flight controller
+Hardware
  - Stm32f103c8t6
  - MPU6050
  - F330 Frame
