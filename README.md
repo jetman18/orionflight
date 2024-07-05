@@ -7,8 +7,16 @@
  - Lipo 3s 2200Mah battery
  - ESC 12A blheli
 
-![exampl](./resource/img2.jpg)
-# Demonstration
+<p align="center">
+<img src="./resource/quad_.jpg" alt="img-name" width="700" height="700">
+<P/>
+
+<p align="center">
+<img src="./resource/img2.jpg" alt="img-name" width="700" height="830">
+<P/>
+
+
+### Demonstration
 https://youtu.be/7D9eUaouD7U
 
 
